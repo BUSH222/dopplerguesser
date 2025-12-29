@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-data = np.fromfile("clock_drift_out.txt", dtype=np.float32)[10:]  # low values in ppl estimator
+data = np.fromfile("clock_drift_out.txt", dtype=np.float32)[30:]  # low values in ppl estimator
 print(data[0:10])
 window_size = 1000
 filtered_data = np.convolve(data, np.ones(window_size)/window_size, mode='valid')

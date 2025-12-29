@@ -114,6 +114,7 @@ class clock_drift_estimator(gr.top_block, Qt.QWidget):
                 1e6,
                 window.WIN_HAMMING,
                 6.76))
+        self.blocks_throttle2_0 = blocks.throttle( gr.sizeof_gr_complex*1, samp_rate, True, 0 if "auto" == "auto" else max( int(float(0.1) * samp_rate) if "auto" == "time" else int(0.1), 1) )
         self.blocks_multiply_const_vxx_0 = blocks.multiply_const_ff((samp_rate/(2*pi)))
         self.blocks_moving_average_xx_0 = blocks.moving_average_ff(1000, (1/1000), 4000, 1)
         self.blocks_keep_one_in_n_0 = blocks.keep_one_in_n(gr.sizeof_float*1, 600000)
@@ -130,13 +131,14 @@ class clock_drift_estimator(gr.top_block, Qt.QWidget):
         # Connections
         ##################################################
         self.connect((self.analog_pll_freqdet_cf_0, 0), (self.blocks_multiply_const_vxx_0, 0))
-        self.connect((self.blocks_correctiq_0, 0), (self.low_pass_filter_0, 0))
+        self.connect((self.blocks_correctiq_0, 0), (self.blocks_throttle2_0, 0))
         self.connect((self.blocks_file_source_0, 0), (self.blocks_interleaved_short_to_complex_0, 0))
         self.connect((self.blocks_interleaved_short_to_complex_0, 0), (self.blocks_correctiq_0, 0))
         self.connect((self.blocks_keep_one_in_n_0, 0), (self.blocks_file_sink_0, 0))
         self.connect((self.blocks_moving_average_xx_0, 0), (self.blocks_keep_one_in_n_0, 0))
         self.connect((self.blocks_moving_average_xx_0, 0), (self.qtgui_number_sink_0, 0))
         self.connect((self.blocks_multiply_const_vxx_0, 0), (self.blocks_moving_average_xx_0, 0))
+        self.connect((self.blocks_throttle2_0, 0), (self.low_pass_filter_0, 0))
         self.connect((self.low_pass_filter_0, 0), (self.analog_pll_freqdet_cf_0, 0))
 
 
