@@ -81,7 +81,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [448, 228.0]
+    coordinate: [488, 388.0]
     rotation: 0
     state: enabled
 - name: blocks_correctiq_0
@@ -114,7 +114,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [976, 228.0]
+    coordinate: [984, 244.0]
     rotation: 0
     state: enabled
 - name: blocks_file_source_0
@@ -153,7 +153,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [152, 312.0]
+    coordinate: [208, 392.0]
     rotation: 0
     state: bypassed
 - name: blocks_interleaved_short_to_complex_0
@@ -189,7 +189,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [864, 236.0]
+    coordinate: [880, 396.0]
     rotation: 0
     state: enabled
 - name: blocks_moving_average_xx_0
@@ -209,7 +209,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [728, 224.0]
+    coordinate: [752, 384.0]
     rotation: 0
     state: enabled
 - name: blocks_multiply_const_vxx_0
@@ -227,7 +227,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [600, 236.0]
+    coordinate: [632, 396.0]
     rotation: 0
     state: enabled
 - name: blocks_throttle2_0
@@ -248,7 +248,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [32, 232.0]
+    coordinate: [480, 128.0]
     rotation: 0
     state: enabled
 - name: import_0
@@ -285,180 +285,45 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [296, 212.0]
+    coordinate: [352, 372.0]
     rotation: 0
     state: enabled
-- name: qtgui_const_sink_x_0
-  id: qtgui_const_sink_x
+- name: network_tcp_sink_0
+  id: network_tcp_sink
   parameters:
+    addr: 127.0.0.1
     affinity: ''
     alias: ''
-    alpha1: '1.0'
-    alpha10: '1.0'
-    alpha2: '1.0'
-    alpha3: '1.0'
-    alpha4: '1.0'
-    alpha5: '1.0'
-    alpha6: '1.0'
-    alpha7: '1.0'
-    alpha8: '1.0'
-    alpha9: '1.0'
-    autoscale: 'False'
-    axislabels: 'True'
-    color1: '"blue"'
-    color10: '"dark blue"'
-    color2: '"red"'
-    color3: '"green"'
-    color4: '"black"'
-    color5: '"cyan"'
-    color6: '"magenta"'
-    color7: '"yellow"'
-    color8: '"dark red"'
-    color9: '"dark green"'
     comment: ''
-    grid: 'False'
-    gui_hint: ''
-    label1: ''
-    label10: ''
-    label2: ''
-    label3: ''
-    label4: ''
-    label5: ''
-    label6: ''
-    label7: ''
-    label8: ''
-    label9: ''
-    legend: 'True'
-    marker1: '0'
-    marker10: '0'
-    marker2: '0'
-    marker3: '0'
-    marker4: '0'
-    marker5: '0'
-    marker6: '0'
-    marker7: '0'
-    marker8: '0'
-    marker9: '0'
-    name: '""'
-    nconnections: '1'
-    size: '1024'
-    style1: '0'
-    style10: '0'
-    style2: '0'
-    style3: '0'
-    style4: '0'
-    style5: '0'
-    style6: '0'
-    style7: '0'
-    style8: '0'
-    style9: '0'
-    tr_chan: '0'
-    tr_level: '0.0'
-    tr_mode: qtgui.TRIG_MODE_FREE
-    tr_slope: qtgui.TRIG_SLOPE_POS
-    tr_tag: '""'
-    type: complex
-    update_time: '0.10'
-    width1: '1'
-    width10: '1'
-    width2: '1'
-    width3: '1'
-    width4: '1'
-    width5: '1'
-    width6: '1'
-    width7: '1'
-    width8: '1'
-    width9: '1'
-    xmax: '2'
-    xmin: '-2'
-    ymax: '2'
-    ymin: '-2'
+    mode: '2'
+    port: '12346'
+    type: float
+    vlen: '1'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [440, 312.0]
+    coordinate: [1016, 392.0]
     rotation: 0
-    state: disabled
-- name: qtgui_freq_sink_x_0
-  id: qtgui_freq_sink_x
+    state: enabled
+- name: network_tcp_source_0
+  id: network_tcp_source
   parameters:
+    addr: 127.0.0.1
     affinity: ''
     alias: ''
-    alpha1: '1.0'
-    alpha10: '1.0'
-    alpha2: '1.0'
-    alpha3: '1.0'
-    alpha4: '1.0'
-    alpha5: '1.0'
-    alpha6: '1.0'
-    alpha7: '1.0'
-    alpha8: '1.0'
-    alpha9: '1.0'
-    autoscale: 'False'
-    average: '0.2'
-    axislabels: 'True'
-    bw: samp_rate
-    color1: '"blue"'
-    color10: '"dark blue"'
-    color2: '"red"'
-    color3: '"green"'
-    color4: '"black"'
-    color5: '"cyan"'
-    color6: '"magenta"'
-    color7: '"yellow"'
-    color8: '"dark red"'
-    color9: '"dark green"'
     comment: ''
-    ctrlpanel: 'False'
-    fc: '0'
-    fftsize: '2048'
-    freqhalf: 'True'
-    grid: 'False'
-    gui_hint: ''
-    label: Relative Gain
-    label1: ''
-    label10: ''''''
-    label2: ''''''
-    label3: ''''''
-    label4: ''''''
-    label5: ''''''
-    label6: ''''''
-    label7: ''''''
-    label8: ''''''
-    label9: ''''''
-    legend: 'True'
     maxoutbuf: '0'
     minoutbuf: '0'
-    name: '""'
-    nconnections: '1'
-    norm_window: 'False'
-    showports: 'False'
-    tr_chan: '0'
-    tr_level: '0.0'
-    tr_mode: qtgui.TRIG_MODE_FREE
-    tr_tag: '""'
-    type: complex
-    units: dB
-    update_time: '0.10'
-    width1: '1'
-    width10: '1'
-    width2: '1'
-    width3: '1'
-    width4: '1'
-    width5: '1'
-    width6: '1'
-    width7: '1'
-    width8: '1'
-    width9: '1'
-    wintype: window.WIN_BLACKMAN_hARRIS
-    ymax: '-30'
-    ymin: '-60'
+    port: '12345'
+    server: 'False'
+    type: short
+    vlen: '1'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [448, 380.0]
+    coordinate: [56, 212.0]
     rotation: 0
     state: disabled
 - name: qtgui_number_sink_0
@@ -521,7 +386,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [904, 320.0]
+    coordinate: [984, 496.0]
     rotation: 0
     state: enabled
 
@@ -532,13 +397,13 @@ connections:
 - [blocks_freqshift_cc_0, '0', low_pass_filter_0, '0']
 - [blocks_interleaved_short_to_complex_0, '0', blocks_correctiq_0, '0']
 - [blocks_keep_one_in_n_0, '0', blocks_file_sink_0, '0']
+- [blocks_keep_one_in_n_0, '0', network_tcp_sink_0, '0']
 - [blocks_moving_average_xx_0, '0', blocks_keep_one_in_n_0, '0']
 - [blocks_moving_average_xx_0, '0', qtgui_number_sink_0, '0']
 - [blocks_multiply_const_vxx_0, '0', blocks_moving_average_xx_0, '0']
 - [blocks_throttle2_0, '0', blocks_freqshift_cc_0, '0']
 - [low_pass_filter_0, '0', analog_pll_freqdet_cf_0, '0']
-- [low_pass_filter_0, '0', qtgui_const_sink_x_0, '0']
-- [low_pass_filter_0, '0', qtgui_freq_sink_x_0, '0']
+- [network_tcp_source_0, '0', blocks_interleaved_short_to_complex_0, '0']
 
 metadata:
   file_format: 1
