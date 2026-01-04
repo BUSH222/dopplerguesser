@@ -53,7 +53,7 @@ blocks:
     bus_structure: null
     coordinate: [264, 8.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: samp_rate
   id: variable
   parameters:
@@ -72,11 +72,11 @@ blocks:
     affinity: ''
     alias: ''
     comment: ''
-    max_freq: '0.02'
+    max_freq: '0.2'
     maxoutbuf: '0'
-    min_freq: '-0.02'
+    min_freq: '-0.2'
     minoutbuf: '0'
-    w: '0.0001'
+    w: '0.0004'
   states:
     bus_sink: false
     bus_source: false
@@ -138,7 +138,7 @@ blocks:
     bus_structure: null
     coordinate: [16, 112.0]
     rotation: 0
-    state: enabled
+    state: disabled
 - name: blocks_freqshift_cc_0
   id: blocks_freqshift_cc
   parameters:
@@ -153,9 +153,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [208, 392.0]
+    coordinate: [240, 392.0]
     rotation: 0
-    state: bypassed
+    state: enabled
 - name: blocks_interleaved_short_to_complex_0
   id: blocks_interleaved_short_to_complex
   parameters:
@@ -285,7 +285,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [352, 372.0]
+    coordinate: [360, 372.0]
     rotation: 0
     state: enabled
 - name: network_tcp_sink_0
@@ -325,7 +325,7 @@ blocks:
     bus_structure: null
     coordinate: [56, 212.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: qtgui_number_sink_0
   id: qtgui_number_sink
   parameters:

@@ -20,7 +20,8 @@ all_data = np.array([], dtype=np.float32)
 processed_samples = 0
 
 print(f"Connecting to {HOST}:{PORT}...")
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+with open("raw_samples.csv", "w") as f_log, socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    f_log.write("timestamp,samples\n")
     s.connect((HOST, PORT))
     print("Connected.")
     s.setblocking(False)
@@ -32,7 +33,9 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             try:
                 data_bytes = s.recv(4096)
                 if data_bytes:
+                    recv_time = time.time()
                     new_data = np.frombuffer(data_bytes, dtype=np.float32)
+                    f_log.write(f"{recv_time},{','.join(map(str, new_data))}\n")
                     all_data = np.concatenate((all_data, new_data))
             except BlockingIOError:
                 pass
