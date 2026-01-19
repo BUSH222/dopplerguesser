@@ -1,4 +1,4 @@
-# noqa
+# type: ignore
 
 # SPDX-License-Identifier: GPL-3.0
 #
