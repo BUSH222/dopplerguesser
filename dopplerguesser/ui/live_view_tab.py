@@ -17,7 +17,7 @@ def draw_live_view_tab():
                                 format="%.0f", step=1000)
             dpg.add_input_float(label="Clock Error (Hz)", default_value=0.0, step=10)
 
-            dpg.add_dummy(height=5)
+            dpg.add_spacer(height=5)
             dpg.add_text("Live Readings:")
             with dpg.group(horizontal=True):
                 dpg.add_text("Doppler Offset: ")
