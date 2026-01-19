@@ -23,7 +23,7 @@ _calibration_state = {
 
 def _calibration_task():
     state = _calibration_state
-    time.sleep(2)
+    time.sleep(5)
 
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -70,7 +70,7 @@ def _calibration_task():
                         state["plot_y"].extend(filtered.tolist())
                         state["processed_count"] += new_len
 
-                        limit = 2000
+                        limit = 1000
                         dpg.configure_item("drift_series", x=state["plot_x"][-limit:], y=state["plot_y"][-limit:])
                         dpg.fit_axis_data("drift_x_axis")
                         dpg.fit_axis_data("drift_y_axis")
@@ -100,7 +100,7 @@ def start_calibration(sender=None, app_data=None, user_data=None):
     if state["running"]:
         return
 
-    script_path = os.path.join("gr_scripts", "pll_lock.py")
+    script_path = os.path.abspath(os.path.join("gr_scripts", "pll_lock.py"))
     if not os.path.exists(script_path):
         print(f"Script not found: {script_path}")
         dpg.set_value("clock_drift_text", f"Error: Script not found at {script_path}")

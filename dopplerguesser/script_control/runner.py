@@ -4,8 +4,7 @@ from dopplerguesser.config import ConfigManager
 
 def run_flowgraph(script_path):
     """Run the GNURadio flowgraph script located at script_path."""
-    config = ConfigManager()
-    process = subprocess.Popen([config.python_executable, script_path])
+    process = subprocess.Popen([ConfigManager().get('gr_path'), script_path])
     return process
 
 
