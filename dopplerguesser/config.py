@@ -1,1 +1,57 @@
-CONFIG_FILE = "config.json"
+import json
+import os
+from dopplerguesser.misc.get_username import get_username
+
+
+class ConfigManager:
+    _instance = None
+    CONFIG_FILE = "config.json"
+    DEFAULTS = {
+        "lat": 55.7,
+        "lon": 37.1,
+        "alt": 170.0,
+        "alive_only": True,
+        "gr_path": f"/Users/{get_username()}/radioconda/bin/python",
+        "gr_tcp": "localhost:12346",
+        "debug_tab": False,
+    }
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(ConfigManager, cls).__new__(cls)
+            cls._instance._settings = cls.DEFAULTS.copy()
+            cls._instance.load()
+        return cls._instance
+
+    def load(self):
+        print("Reloading settings from config.json")
+        if os.path.exists(self.CONFIG_FILE):
+            try:
+                with open(self.CONFIG_FILE, "r") as f:
+                    loaded = json.load(f)
+                    self._settings.update(loaded)
+            except Exception as e:
+                print(f"Error loading config: {e}")
+
+    def save(self):
+        try:
+            with open(self.CONFIG_FILE, "w") as f:
+                json.dump(self._settings, f, indent=4)
+            print("Settings saved to config.json")
+        except Exception as e:
+            print(f"Error saving config: {e}")
+
+    def get(self, key, default=None):
+        return self._settings.get(key, default)
+
+    def set(self, key, value):
+        self._settings[key] = value
+
+    def __getitem__(self, item):
+        return self._settings[item]
+
+    def __setitem__(self, key, value):
+        self._settings[key] = value
+
+
+config = ConfigManager()
