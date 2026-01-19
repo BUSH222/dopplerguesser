@@ -33,37 +33,16 @@ options:
     state: enabled
 
 blocks:
-- name: freqshift
-  id: variable_qtgui_range
-  parameters:
-    comment: ''
-    gui_hint: ''
-    label: ''
-    min_len: '200'
-    orient: QtCore.Qt.Horizontal
-    rangeType: float
-    start: '-50000'
-    step: '1'
-    stop: '50000'
-    value: '0'
-    widget: counter_slider
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [264, 8.0]
-    rotation: 0
-    state: enabled
 - name: samp_rate
   id: variable
   parameters:
     comment: ''
-    value: 6e6
+    value: 2e6
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [128, 8.0]
+    coordinate: [296, 8.0]
     rotation: 0
     state: enabled
 - name: analog_pll_freqdet_cf_0
@@ -99,24 +78,6 @@ blocks:
     coordinate: [336, 132.0]
     rotation: 0
     state: enabled
-- name: blocks_file_sink_0
-  id: blocks_file_sink
-  parameters:
-    affinity: ''
-    alias: ''
-    append: 'False'
-    comment: ''
-    file: /Users/tedvtorov/Desktop/recordings/gr_scripts/clock_drift_out.txt
-    type: float
-    unbuffered: 'False'
-    vlen: '1'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [984, 244.0]
-    rotation: 0
-    state: enabled
 - name: blocks_file_source_0
   id: blocks_file_source
   parameters:
@@ -139,23 +100,6 @@ blocks:
     coordinate: [16, 112.0]
     rotation: 0
     state: disabled
-- name: blocks_freqshift_cc_0
-  id: blocks_freqshift_cc
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    freq: freqshift
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    sample_rate: samp_rate
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [240, 392.0]
-    rotation: 0
-    state: enabled
 - name: blocks_interleaved_short_to_complex_0
   id: blocks_interleaved_short_to_complex
   parameters:
@@ -189,7 +133,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [880, 396.0]
+    coordinate: [904, 396.0]
     rotation: 0
     state: enabled
 - name: blocks_moving_average_xx_0
@@ -209,7 +153,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [752, 384.0]
+    coordinate: [768, 384.0]
     rotation: 0
     state: enabled
 - name: blocks_multiply_const_vxx_0
@@ -261,31 +205,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [200, 8.0]
-    rotation: 0
-    state: enabled
-- name: low_pass_filter_0
-  id: low_pass_filter
-  parameters:
-    affinity: ''
-    alias: ''
-    beta: '6.76'
-    comment: ''
-    cutoff_freq: 2.5e6
-    decim: '1'
-    gain: '1'
-    interp: '1'
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    samp_rate: samp_rate
-    type: fir_filter_ccf
-    width: 1e6
-    win: window.WIN_HAMMING
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [360, 372.0]
+    coordinate: [168, 8.0]
     rotation: 0
     state: enabled
 - name: network_tcp_sink_0
@@ -326,83 +246,16 @@ blocks:
     coordinate: [56, 212.0]
     rotation: 0
     state: enabled
-- name: qtgui_number_sink_0
-  id: qtgui_number_sink
-  parameters:
-    affinity: ''
-    alias: ''
-    autoscale: 'False'
-    avg: '0'
-    color1: ("black", "black")
-    color10: ("black", "black")
-    color2: ("black", "black")
-    color3: ("black", "black")
-    color4: ("black", "black")
-    color5: ("black", "black")
-    color6: ("black", "black")
-    color7: ("black", "black")
-    color8: ("black", "black")
-    color9: ("black", "black")
-    comment: ''
-    factor1: '1'
-    factor10: '1'
-    factor2: '1'
-    factor3: '1'
-    factor4: '1'
-    factor5: '1'
-    factor6: '1'
-    factor7: '1'
-    factor8: '1'
-    factor9: '1'
-    graph_type: qtgui.NUM_GRAPH_HORIZ
-    gui_hint: ''
-    label1: ''
-    label10: ''
-    label2: ''
-    label3: ''
-    label4: ''
-    label5: ''
-    label6: ''
-    label7: ''
-    label8: ''
-    label9: ''
-    max: '1'
-    min: '-1'
-    name: '""'
-    nconnections: '1'
-    type: float
-    unit1: ''
-    unit10: ''
-    unit2: ''
-    unit3: ''
-    unit4: ''
-    unit5: ''
-    unit6: ''
-    unit7: ''
-    unit8: ''
-    unit9: ''
-    update_time: '0.10'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [984, 496.0]
-    rotation: 0
-    state: enabled
 
 connections:
 - [analog_pll_freqdet_cf_0, '0', blocks_multiply_const_vxx_0, '0']
 - [blocks_correctiq_0, '0', blocks_throttle2_0, '0']
 - [blocks_file_source_0, '0', blocks_interleaved_short_to_complex_0, '0']
-- [blocks_freqshift_cc_0, '0', low_pass_filter_0, '0']
 - [blocks_interleaved_short_to_complex_0, '0', blocks_correctiq_0, '0']
-- [blocks_keep_one_in_n_0, '0', blocks_file_sink_0, '0']
 - [blocks_keep_one_in_n_0, '0', network_tcp_sink_0, '0']
 - [blocks_moving_average_xx_0, '0', blocks_keep_one_in_n_0, '0']
-- [blocks_moving_average_xx_0, '0', qtgui_number_sink_0, '0']
 - [blocks_multiply_const_vxx_0, '0', blocks_moving_average_xx_0, '0']
-- [blocks_throttle2_0, '0', blocks_freqshift_cc_0, '0']
-- [low_pass_filter_0, '0', analog_pll_freqdet_cf_0, '0']
+- [blocks_throttle2_0, '0', analog_pll_freqdet_cf_0, '0']
 - [network_tcp_source_0, '0', blocks_interleaved_short_to_complex_0, '0']
 
 metadata:
