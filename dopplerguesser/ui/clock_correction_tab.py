@@ -115,6 +115,17 @@ class ClockCorrectionController:
                            y=derivative[-self.limit:])
         dpg.fit_axis_data("raw_drift_derivative")
 
+    def reset_calibration(self):
+        self.data_buffer = np.array([], dtype=np.float32)
+        self.processed_count = 0
+        self.plot_x = []
+        self.plot_y = []
+        dpg.configure_item("drift_series", x=[], y=[])
+        dpg.configure_item("raw_drift_derivative_series", x=[], y=[])
+        dpg.configure_item("clock_drift_text", "Delta = 0.0 Hz")
+        dpg.configure_item("average_clock_drift_text", "Average clock drift: N/A Hz")
+        dpg.configure_item("clock_drift_status", "not stable", color=(255, 0, 0))
+
 
 _controller = ClockCorrectionController()
 
@@ -154,3 +165,5 @@ def draw_clock_correction_tab():
                     with dpg.plot_axis(dpg.mvYAxis, label="First Derivative of Drift (Hz)",
                                        tag="raw_drift_derivative"):
                         dpg.add_line_series([], [], label="Raw Drift Derivative", tag="raw_drift_derivative_series")
+                dpg.add_button(label="Reset Calibration", width=-1,
+                               callback=lambda s, a, u: _controller.reset_calibration())
