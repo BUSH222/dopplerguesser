@@ -14,7 +14,22 @@ import signal
 from gnuradio import network
 from math import pi
 import threading
-from dopplerguesser.misc.rigctl_query import query_rigctl
+import socket
+
+
+def query_rigctl(addr='localhost:4532'):  # From dopplerguesser/misc/rigctl_query.py, imports broken here
+    try:
+        with socket.create_connection((addr.split(':')[0], int(addr.split(':')[1])), timeout=2) as s:
+            s.sendall(b'f\n')
+            freq_data = s.recv(1024).decode().strip()
+            s.sendall(b'm\n')  # RAW\nNUMBER
+            bw_data = s.recv(1024).decode().strip().split('\n')[1]
+            frequency = float(freq_data)
+            bandwidth = float(bw_data)
+            return frequency, bandwidth
+    except Exception as e:
+        print(f"Error querying rigctl: {e}")
+        return None, None
 
 
 class clock_drift_estimator(gr.top_block):
@@ -72,7 +87,7 @@ class clock_drift_estimator(gr.top_block):
 
 def main(top_block_cls=clock_drift_estimator, options=None):
     frequency, bandwidth = query_rigctl()
-    if frequency is None or bandwidth is None:
+    if bandwidth is None:
         print("Could not query rigctl for sample rate. Using default 2 MHz.")
         rigctl_samp_rate = 2e6
     else:
