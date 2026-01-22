@@ -14,18 +14,19 @@ import signal
 from gnuradio import network
 from math import pi
 import threading
+from dopplerguesser.misc.rigctl_query import query_rigctl
 
 
 class clock_drift_estimator(gr.top_block):
 
-    def __init__(self):
+    def __init__(self, rigctl_samp_rate=2e6):
         gr.top_block.__init__(self, "clock drift estimator", catch_exceptions=True)
         self.flowgraph_started = threading.Event()
 
         ##################################################
         # Variables
         ##################################################
-        self.samp_rate = samp_rate = 2e6
+        self.samp_rate = samp_rate = int(rigctl_samp_rate)
 
         ##################################################
         # Blocks
@@ -43,7 +44,7 @@ class clock_drift_estimator(gr.top_block):
                                                   max(int(float(0.1) * samp_rate)if "auto" == "time" else int(0.1), 1))
         self.blocks_multiply_const_vxx_0 = blocks.multiply_const_ff((samp_rate/(2*pi)))
         self.blocks_moving_average_xx_0 = blocks.moving_average_ff(1000, (1/1000), 4000, 1)
-        self.blocks_keep_one_in_n_0 = blocks.keep_one_in_n(gr.sizeof_float*1, 600000)
+        self.blocks_keep_one_in_n_0 = blocks.keep_one_in_n(gr.sizeof_float*1, int(samp_rate/100))
         self.blocks_interleaved_short_to_complex_0 = blocks.interleaved_short_to_complex(False, False, 2**15)
         self.blocks_correctiq_0 = blocks.correctiq()
         self.analog_pll_freqdet_cf_0 = analog.pll_freqdet_cf(0.0004, 0.2, (-0.2))
@@ -70,8 +71,13 @@ class clock_drift_estimator(gr.top_block):
 
 
 def main(top_block_cls=clock_drift_estimator, options=None):
-
-    tb = top_block_cls()
+    frequency, bandwidth = query_rigctl()
+    if frequency is None or bandwidth is None:
+        print("Could not query rigctl for sample rate. Using default 2 MHz.")
+        rigctl_samp_rate = 2e6
+    else:
+        rigctl_samp_rate = bandwidth
+    tb = top_block_cls(rigctl_samp_rate=rigctl_samp_rate)
 
     tb.start()
     tb.flowgraph_started.set()

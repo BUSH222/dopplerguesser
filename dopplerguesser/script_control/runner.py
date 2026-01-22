@@ -16,6 +16,7 @@ class FlowgraphRunner:
         self._running = False
         self._thread = None
         self.on_data = None
+        self.first_reception_time = None
 
     def start(self, on_data_callback=None):
         if self._running:
@@ -23,6 +24,8 @@ class FlowgraphRunner:
             return
 
         self.on_data = on_data_callback
+        self.first_reception_time = None
+
         python_exec = config.get('gr_path')
         if not python_exec or not os.path.exists(python_exec):
             python_exec = "python3"
@@ -93,14 +96,30 @@ class FlowgraphRunner:
             sock.close()
             return
 
+        current_bin = 0
+        current_buffer = []
+
         while self._running:
             try:
                 chunk = sock.recv(4096)
                 if not chunk:
                     break
+                now = time.time()
+                if self.first_reception_time is None:
+                    self.first_reception_time = now
+
+                relative_time = now - self.first_reception_time
+                bin_index = int(relative_time + 0.5)
                 data = np.frombuffer(chunk, dtype=np.float32)
-                if len(data) > 0 and self.on_data:
-                    self.on_data(data)
+                if bin_index > current_bin:
+                    if current_buffer:
+                        avg_val = float(np.mean(current_buffer))
+                        if self.on_data:
+                            self.on_data([(current_bin, avg_val)])
+                    current_buffer = []
+                    current_bin = bin_index
+                current_buffer.extend(data)
+
             except BlockingIOError:
                 time.sleep(0.01)
             except Exception as e:

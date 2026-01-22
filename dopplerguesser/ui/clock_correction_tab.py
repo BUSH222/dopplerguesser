@@ -8,9 +8,6 @@ from dopplerguesser.script_control.runner import FlowgraphRunner
 class ClockCorrectionController:
     def __init__(self):
         self.runner = None
-        self.data_buffer = np.array([], dtype=np.float32)
-        self.window_size = 100
-        self.processed_count = 0
         self.plot_x = []
         self.plot_y = []
         self.last_update_time = 0
@@ -19,8 +16,6 @@ class ClockCorrectionController:
     def start(self):
         script_path = os.path.abspath(os.path.join("gr_scripts", "pll_lock.py"))
         self.runner = FlowgraphRunner(script_path, port=12346)
-        self.data_buffer = np.array([], dtype=np.float32)
-        self.processed_count = 0
         self.plot_x = []
         self.plot_y = []
         self.last_update_time = time.time()
@@ -35,11 +30,10 @@ class ClockCorrectionController:
             self.runner = None
         dpg.configure_item("btn_start_calib", label="Start Calibration", callback=start_calibration)
 
-    def handle_data(self, new_data):
-        self.data_buffer = np.concatenate((self.data_buffer, new_data))
-
-        if len(new_data) > 0:
-            val = new_data[-1]
+    def handle_data(self, new_data_list):
+        for sec_idx, val in new_data_list:
+            self.plot_x.append(sec_idx)
+            self.plot_y.append(val)
             dpg.set_value("clock_drift_text", f"Delta = {val:.2f} Hz")
 
         now = time.time()
@@ -54,25 +48,14 @@ class ClockCorrectionController:
             self.last_update_time = now
 
     def update_plot(self):
-        if len(self.data_buffer) >= self.processed_count + self.window_size:
-            chunk = self.data_buffer[self.processed_count:]
-            window = np.ones(self.window_size) / self.window_size
-            filtered = np.convolve(chunk, window, mode='valid')
+        if not self.plot_x:
+            return
 
-            if len(filtered) > 0:
-                current_len = len(self.plot_y)
-                new_len = len(filtered)
-                new_x = np.arange(current_len, current_len + new_len)
-
-                self.plot_x.extend(new_x.tolist())
-                self.plot_y.extend(filtered.tolist())
-                self.processed_count += new_len
-
-                dpg.configure_item("drift_series",
-                                   x=self.plot_x[-self.limit:],
-                                   y=self.plot_y[-self.limit:])
-                dpg.fit_axis_data("drift_x_axis")
-                dpg.fit_axis_data("drift_y_axis")
+        dpg.configure_item("drift_series",
+                           x=self.plot_x[-self.limit:],
+                           y=self.plot_y[-self.limit:])
+        dpg.fit_axis_data("drift_x_axis")
+        dpg.fit_axis_data("drift_y_axis")
 
     def find_trend(self):
         if len(self.plot_x) < 2:
@@ -116,15 +99,13 @@ class ClockCorrectionController:
         dpg.fit_axis_data("raw_drift_derivative")
 
     def reset_calibration(self):
-        self.data_buffer = np.array([], dtype=np.float32)
-        self.processed_count = 0
         self.plot_x = []
         self.plot_y = []
         dpg.configure_item("drift_series", x=[], y=[])
         dpg.configure_item("raw_drift_derivative_series", x=[], y=[])
-        dpg.configure_item("clock_drift_text", "Delta = 0.0 Hz")
-        dpg.configure_item("average_clock_drift_text", "Average clock drift: N/A Hz")
-        dpg.configure_item("clock_drift_status", "not stable", color=(255, 0, 0))
+        dpg.configure_item("clock_drift_text", default_value="Delta = 0.0 Hz")
+        dpg.configure_item("average_clock_drift_text", default_value="Average clock drift: N/A Hz")
+        dpg.configure_item("clock_drift_status", default_value="not stable", color=(255, 0, 0))
 
 
 _controller = ClockCorrectionController()
