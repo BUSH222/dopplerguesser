@@ -34,18 +34,41 @@ class ClockCorrectionController:
         for sec_idx, val in new_data_list:
             self.plot_x.append(sec_idx)
             self.plot_y.append(val)
-            dpg.set_value("clock_drift_text", f"Delta = {val:.2f} Hz")
+            dpg.set_value("clock_drift_text", f"Current clock drift: {val:.2f} Hz")
 
         now = time.time()
         if now - self.last_update_time > 0.2:
             self.update_plot()
             self.update_derivative_plot()
-            stable = self.update_stability_status()
-            if stable:
-                self.update_average_drift_display()
-            else:
-                dpg.set_value("average_clock_drift_text", "Average clock drift: N/A Hz")
+            self.update_metrics()
             self.last_update_time = now
+
+    def update_metrics(self):
+        # Update PLL Status
+        if self.pll_locked():
+            dpg.set_value("pll_status", "Locked")
+            dpg.configure_item("pll_status", color=(100, 255, 100))
+        else:
+            dpg.set_value("pll_status", "Unlocked")
+            dpg.configure_item("pll_status", color=(255, 0, 0))
+
+        # Update Average Drift (Last 30 samples)
+        if len(self.plot_y) > 0:
+            avg_30 = np.mean(self.plot_y[-30:])
+            dpg.set_value("avg_drift_text", f"Average clock drift: {avg_30:.2f} Hz")
+
+        # Update Slope
+        slope = self.find_trend()
+        dpg.set_value("slope_text", f"Current slope: {slope:.4f} Hz/s")
+
+        # Update Stability
+        threshold = 0.1
+        if abs(slope) < threshold:
+            dpg.set_value("clock_drift_status", "stable")
+            dpg.configure_item("clock_drift_status", color=(100, 255, 100))
+        else:
+            dpg.set_value("clock_drift_status", "not stable")
+            dpg.configure_item("clock_drift_status", color=(255, 0, 0))
 
     def update_plot(self):
         if not self.plot_x:
@@ -67,45 +90,27 @@ class ClockCorrectionController:
         m, c = np.linalg.lstsq(A, y, rcond=None)[0]
         return m
 
-    def update_stability_status(self):
-        trend = self.find_trend()
-        threshold = 0.1
-        if abs(trend) < threshold:
-            dpg.set_value("clock_drift_status", "stable")
-            dpg.configure_item("clock_drift_status", color=(100, 255, 100))
-        else:
-            dpg.set_value("clock_drift_status", "not stable")
-            dpg.configure_item("clock_drift_status", color=(255, 0, 0))
-        return abs(trend) < threshold
-
-    def calculate_average_drift(self):
-        if len(self.plot_y) < 2:
-            return 0.0
-        return np.mean(np.diff(self.plot_y[-self.limit:]))
-
-    def update_average_drift_display(self):
-        avg_drift = self.calculate_average_drift()
-        dpg.set_value("average_clock_drift_text", f"Average clock drift: {avg_drift:.2f} Hz")
-
-    def update_derivative_plot(self):
-        if len(self.plot_y) < 2:
-            return
-        derivative = np.diff(self.plot_y)
-        x_deriv = self.plot_x[1:]
-
-        dpg.configure_item("raw_drift_derivative_series",
-                           x=x_deriv[-self.limit:],
-                           y=derivative[-self.limit:])
-        dpg.fit_axis_data("raw_drift_derivative")
-
     def reset_calibration(self):
         self.plot_x = []
         self.plot_y = []
         dpg.configure_item("drift_series", x=[], y=[])
         dpg.configure_item("raw_drift_derivative_series", x=[], y=[])
-        dpg.configure_item("clock_drift_text", default_value="Delta = 0.0 Hz")
-        dpg.configure_item("average_clock_drift_text", default_value="Average clock drift: N/A Hz")
-        dpg.configure_item("clock_drift_status", default_value="not stable", color=(255, 0, 0))
+
+        dpg.set_value("clock_drift_text", "Current clock drift: N/A Hz")
+        dpg.set_value("avg_drift_text", "Average clock drift: N/A Hz")
+        dpg.set_value("slope_text", "Current slope: N/A Hz/s")
+        dpg.set_value("pll_status", "Unlocked")
+        dpg.configure_item("pll_status", color=(255, 0, 0))
+        dpg.set_value("clock_drift_status", "not stable")
+        dpg.configure_item("clock_drift_status", color=(255, 0, 0))
+
+    def pll_locked(self):
+        if len(self.plot_y) < 20:
+            return False
+        recent_samples = self.plot_y[-20:]
+        if max(recent_samples) - min(recent_samples) < 1000:
+            return True
+        return False
 
 
 _controller = ClockCorrectionController()
@@ -131,8 +136,13 @@ def draw_clock_correction_tab():
             dpg.add_button(label="Start Calibration", tag="btn_start_calib", width=-1,
                            callback=start_calibration)
 
-            dpg.add_text("Delta = 0.0 Hz", tag="clock_drift_text", color=(255, 200, 100))
-            dpg.add_text("Average clock drift: N/A Hz", tag="average_clock_drift_text", color=(200, 200, 255))
+            dpg.add_text("Current clock drift: N/A Hz", tag="clock_drift_text", color=(255, 200, 100))
+            dpg.add_text("Average clock drift: N/A Hz", tag="avg_drift_text", color=(200, 200, 255))
+            dpg.add_text("Current slope: N/A Hz/s", tag="slope_text", color=(200, 200, 255))
+
+            with dpg.group(horizontal=True):
+                dpg.add_text("PLL:")
+                dpg.add_text("Unlocked", tag="pll_status", color=(255, 0, 0))
 
             with dpg.group(horizontal=True):
                 dpg.add_text("Clock is")
