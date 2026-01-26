@@ -14,7 +14,7 @@ class ClockCorrectionController:
         self.limit = 1000
 
     def start(self):
-        script_path = os.path.abspath(os.path.join("gr_scripts", "pll_lock.py"))
+        script_path = os.path.abspath(os.path.join("gr_scripts", "pll_estimator.py"))
         self.runner = FlowgraphRunner(script_path, port=12346)
         self.plot_x = []
         self.plot_y = []
@@ -44,7 +44,6 @@ class ClockCorrectionController:
             self.last_update_time = now
 
     def update_metrics(self):
-        # Update PLL Status
         if self.pll_locked():
             dpg.set_value("pll_status", "Locked")
             dpg.configure_item("pll_status", color=(100, 255, 100))
@@ -52,18 +51,15 @@ class ClockCorrectionController:
             dpg.set_value("pll_status", "Unlocked")
             dpg.configure_item("pll_status", color=(255, 0, 0))
 
-        # Update Average Drift (Last 30 samples)
         if len(self.plot_y) > 0:
             avg_30 = np.mean(self.plot_y[-30:])
             dpg.set_value("avg_drift_text", f"Average clock drift: {avg_30:.2f} Hz")
 
-        # Update Slope
         slope = self.find_trend()
         dpg.set_value("slope_text", f"Current slope: {slope:.4f} Hz/s")
 
-        # Update Stability
         threshold = 0.1
-        if abs(slope) < threshold:
+        if abs(slope) < threshold and self.pll_locked():
             dpg.set_value("clock_drift_status", "stable")
             dpg.configure_item("clock_drift_status", color=(100, 255, 100))
         else:
@@ -79,6 +75,19 @@ class ClockCorrectionController:
                            y=self.plot_y[-self.limit:])
         dpg.fit_axis_data("drift_x_axis")
         dpg.fit_axis_data("drift_y_axis")
+
+    def update_derivative_plot(self):
+        if len(self.plot_x) < 2:
+            return
+
+        dy = np.diff(self.plot_y)
+        dx = np.diff(self.plot_x)
+        derivative = dy / dx
+
+        dpg.configure_item("raw_drift_derivative_series",
+                           x=self.plot_x[1:][-self.limit:],
+                           y=derivative[-self.limit:])
+        dpg.fit_axis_data("raw_drift_derivative")
 
     def find_trend(self):
         if len(self.plot_x) < 2:
