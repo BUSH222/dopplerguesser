@@ -137,6 +137,7 @@ def draw_live_view_tab():
                 dpg.add_text("0.0 m/s", tag="live_velocity_text", color=(100, 255, 255))
 
         with dpg.collapsing_header(label="Predict", default_open=True):
+            dpg.add_text('Confirm PLL is locked and doppler readings are stable before predicting.')
             dpg.add_button(label="Start predicting", width=-1,
                            callback=lambda: print("Starting prediction..."))
             dpg.add_text("Likelihood based on trajectory:")
