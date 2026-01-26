@@ -8,17 +8,18 @@ from dopplerguesser.config import config
 
 
 class FlowgraphRunner:
-    def __init__(self, script_path, host='127.0.0.1', port=12346):
+    def __init__(self, script_path, host='127.0.0.1', port=12346, params=None):
         self.script_path = script_path
         self.host = host
         self.port = port
+        self.params = params if params else {}
         self.process = None
         self._running = False
         self._thread = None
         self.on_data = None
         self.first_reception_time = None
 
-    def start(self, on_data_callback=None, params=None):
+    def start(self, on_data_callback=None):
         if self._running:
             print("FlowgraphRunner is already running.")
             return
@@ -35,9 +36,9 @@ class FlowgraphRunner:
             return
 
         cmd = [python_exec, self.script_path]
-        if params:
-            for key, value in params.items():
-                cmd.append(f"--{key}={value}")
+        for key, value in self.params.items():
+            cmd.append(f"--{key}")
+            cmd.append(str(value))
         print(f"Launching flowgraph: {' '.join(cmd)}")
 
         try:
