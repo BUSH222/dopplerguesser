@@ -3,6 +3,7 @@ import numpy as np
 import os
 import time
 from dopplerguesser.script_control.runner import FlowgraphRunner
+from dopplerguesser.misc.rigctl_query import query_rigctl
 
 
 class ClockCorrectionController:
@@ -15,7 +16,13 @@ class ClockCorrectionController:
 
     def start(self):
         script_path = os.path.abspath(os.path.join("gr_scripts", "pll_estimator.py"))
-        self.runner = FlowgraphRunner(script_path, port=12346)
+        correct_iq = dpg.get_value("chk_remove_dc_spike")
+        _, sample_rate = query_rigctl()
+        params = {
+            "sample_rate": sample_rate,
+            "remove_dc_spike": int(correct_iq)
+        }
+        self.runner = FlowgraphRunner(script_path, port=12346, params=params)
         self.plot_x = []
         self.plot_y = []
         self.last_update_time = time.time()
@@ -137,10 +144,9 @@ def draw_clock_correction_tab():
     with dpg.tab(label="Clock Correction"):
         with dpg.collapsing_header(label="Clock Drift Calibration", default_open=True):
             dpg.add_text("Calibrate your SDR's clock drift here.")
-            dpg.add_text("Aim at a known geostationary satellite", wrap=400)
-            dpg.add_listbox(label="Select Satellite", items=["USA-230", "Other"],
-                            width=-1)
-            dpg.add_input_float(label="Frequency (MHz)", default_value=2262.5, format="%.2f MHz")
+            dpg.add_text("Aim at a known geostationary satellite or a stable signal source", wrap=350)
+            dpg.add_text("Ensure rigctl server and IQ Exporter are running")
+            dpg.add_checkbox(label="Remove DC Spike", tag="chk_remove_dc_spike", default_value=True)
 
             dpg.add_button(label="Start Calibration", tag="btn_start_calib", width=-1,
                            callback=start_calibration)

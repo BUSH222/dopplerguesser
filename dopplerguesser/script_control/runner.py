@@ -18,7 +18,7 @@ class FlowgraphRunner:
         self.on_data = None
         self.first_reception_time = None
 
-    def start(self, on_data_callback=None):
+    def start(self, on_data_callback=None, params=None):
         if self._running:
             print("FlowgraphRunner is already running.")
             return
@@ -35,6 +35,9 @@ class FlowgraphRunner:
             return
 
         cmd = [python_exec, self.script_path]
+        if params:
+            for key, value in params.items():
+                cmd.append(f"--{key}={value}")
         print(f"Launching flowgraph: {' '.join(cmd)}")
 
         try:
