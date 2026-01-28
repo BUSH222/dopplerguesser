@@ -34,9 +34,9 @@ def score_candidates(candidates, measurements, center_freq, observer):
 
         if valid_points > 0:
             rmse = np.sqrt(squared_error_sum / valid_points)
-            results.append((rmse, sat))
+            results.append((sat, rmse))
 
-    results.sort(key=lambda x: x[0])
+    results.sort(key=lambda x: x[1])
     return results
 
 
