@@ -1,4 +1,8 @@
 from skyfield.api import wgs84
+import numpy as np
+from dopplerguesser.predict.propagator import init_earth_rotation, propagate_earth_rotation
+from dopplerguesser.misc.constants import omega_earth
+from dopplerguesser.misc.timetools import unix_to_skyfield
 
 
 class Observer:
@@ -31,6 +35,27 @@ class Observer:
         self.track_t_start = t_start
         self.track_positions = positions
         self.track_velocities = velocities
+
+    def compute_track(self, t_start_unix, duration=1000, step=1):
+        t_start_sf = unix_to_skyfield(t_start_unix)
+        r0_itrs, R_itrs2gcrs_t0 = init_earth_rotation(self.location, t_start_sf)
+
+        positions = []
+        velocities = []
+        times = np.arange(0, duration, step)
+
+        for dt in times:
+            r_gcrs = propagate_earth_rotation(r0_itrs, R_itrs2gcrs_t0, dt)
+            v_gcrs = np.array([
+                -omega_earth * r_gcrs[1],
+                omega_earth * r_gcrs[0],
+                0.0
+            ])
+
+            positions.append(r_gcrs)
+            velocities.append(v_gcrs)
+
+        self.set_track(t_start_sf, np.array(positions), np.array(velocities))
 
     def get_state_from_track(self, t_offset):
         if self.track_positions is None:

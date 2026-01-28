@@ -1,4 +1,5 @@
-from skyfield.api import EarthSatellite
+from skyfield.api import EarthSatellite, load
+timescale = load.timescale()
 
 
 class Satellite:
@@ -6,8 +7,8 @@ class Satellite:
         self.name = name
         self.tle_line1 = tle_line1
         self.tle_line2 = tle_line2
-        self.ts = ts
-        self.satellite = EarthSatellite(tle_line1, tle_line2, name, ts)
+        self.ts = ts  # Unix
+        self.satellite = EarthSatellite(tle_line1, tle_line2, name, timescale)
 
         self.t_state = None
         self.pos_gcrs = None  # km

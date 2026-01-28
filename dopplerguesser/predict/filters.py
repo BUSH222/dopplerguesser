@@ -2,12 +2,14 @@ import numpy as np
 from dopplerguesser.misc.constants import C
 from dopplerguesser.predict.observer import Observer
 from dopplerguesser.predict.satellite import Satellite
+from dopplerguesser.misc.timetools import unix_to_skyfield
 
 
-def filter_visibility(satellites: list[Satellite], observer: Observer, t_sf, min_elevation=0.0):
+def filter_visibility(satellites: list[Satellite], observer: Observer, t, min_elevation=0.0):
     visible_satellites = []
+    t_sf = unix_to_skyfield(t)
 
-    observer_gcrs = observer.location.location.at(t_sf)
+    observer_gcrs = observer.location.at(t_sf)
 
     for sat in satellites:
         difference = sat.satellite.at(t_sf) - observer_gcrs
@@ -17,6 +19,16 @@ def filter_visibility(satellites: list[Satellite], observer: Observer, t_sf, min
             visible_satellites.append(sat)
 
     return visible_satellites
+
+
+def filter_constellations(satellites, constellations_to_remove=['starlink', 'oneweb']):
+    filtered = []
+    for sat in satellites:
+        name_lower = sat.name.lower()
+        if any(constellation in name_lower for constellation in constellations_to_remove):
+            continue
+        filtered.append(sat)
+    return filtered
 
 
 def filter_geostationary(satellites):
@@ -40,8 +52,10 @@ def filter_heo(satellites, eccentricity_threshold=0.25):
     return filtered
 
 
-def filter_by_doppler(satellites, observer, t_sf, center_freq, measured_freq, threshold=2000):
+def filter_by_doppler(satellites, observer, t, center_freq, measured_freq, threshold=2000):
     passed = []
+
+    t_sf = unix_to_skyfield(t)
 
     if observer.t_state != t_sf:
         obs_state = observer.location.at(t_sf)
