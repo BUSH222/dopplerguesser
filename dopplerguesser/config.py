@@ -14,6 +14,13 @@ class ConfigManager:
         "gr_path": f"/Users/{get_username()}/radioconda/bin/python",
         "gr_tcp": "localhost:12346",
         "debug_tab": False,
+        "filter_constellations": True,
+        "filter_constellations_list": "starlink,oneweb",
+        "filter_heo": True,
+        "filter_doppler": True,
+        "filter_doppler_threshold": 10000,
+        "filter_visibility_min_elevation": 0,
+        "propagation_cache_duration": 1000,
     }
 
     def __new__(cls):
