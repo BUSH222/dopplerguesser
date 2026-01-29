@@ -91,6 +91,11 @@ class LiveViewController:
         dpg.fit_axis_data("live_doppler_xaxis")
         dpg.fit_axis_data("live_doppler_yaxis")
 
+    def clear_plot(self):
+        self.plot_x = []
+        self.plot_y = []
+        dpg.configure_item("live_doppler_series", x=[], y=[])
+
     def pll_locked(self):
         if len(self.plot_y) < 20:
             return False
@@ -169,4 +174,4 @@ def draw_live_view_tab():
                 dpg.add_plot_axis(dpg.mvXAxis, label="Time (s)", tag="live_doppler_xaxis")
                 with dpg.plot_axis(dpg.mvYAxis, label="Shift (Hz)", tag="live_doppler_yaxis"):
                     dpg.add_line_series([], [], label="Measured", tag="live_doppler_series")
-                dpg.add_button(label="Clear", width=-1, callback=lambda: _live_controller.clear_plot())
+                    dpg.add_button(label="Clear", width=-1, callback=lambda: _live_controller.clear_plot())

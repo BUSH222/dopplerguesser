@@ -40,6 +40,27 @@ def draw_settings_tab():
             dpg.add_text("GNURadio TCP Server URL")
             dpg.add_input_text(tag="settings_gr_tcp", default_value=config.get("gr_tcp"), width=-1)
 
+        with dpg.collapsing_header(label="Filters"):
+            dpg.add_checkbox(label="Filter satellite constellations", tag="settings_filter_constellations")
+            dpg.add_text("Comma-separated list of constellation names.")
+            dpg.add_input_text(tag="settings_filter_constellations_list",
+                               default_value=config.get("filter_constellations_list"), width=-1)
+            dpg.add_checkbox(label="Filter HEO satellites", tag="settings_filter_heo")
+            dpg.add_checkbox(label="Filter by initial doppler shift", tag="settings_filter_doppler")
+            dpg.add_text("Doppler Shift Threshold (Hz):")
+            dpg.add_input_int(tag="settings_filter_doppler_threshold",
+                              default_value=config.get("filter_doppler_threshold") or 10000)
+            dpg.add_text("Visibility filter minimum elevation (deg):")
+            dpg.add_input_int(tag="settings_filter_visibility_min_elevation",
+                              default_value=config.get("filter_visibility_min_elevation") or 0)
+
+        with dpg.collapsing_header(label="Prediction"):
+            dpg.add_text("Propagation cache duration (s):")
+            dpg.add_input_int(tag="settings_propagation_cache_duration",
+                              default_value=config.get("propagation_cache_duration") or 1000)
+            dpg.add_text("PLL thresholds:")
+            dpg.add_text('soon')
+
         with dpg.collapsing_header(label="Misc"):
             dpg.add_checkbox(label="Enable Debug Tab", tag="settings_debug_tab", default_value=config.get("debug_tab"))
 
