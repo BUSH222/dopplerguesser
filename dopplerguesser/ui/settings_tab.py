@@ -1,5 +1,7 @@
+import threading
 import dearpygui.dearpygui as dpg
 from dopplerguesser.config import config
+from dopplerguesser.web.tlemanager import update_tles
 
 
 def save_settings(sender, app_data, user_data):
@@ -24,6 +26,25 @@ def save_settings(sender, app_data, user_data):
     config.save()
 
 
+def _update_tles_worker():
+    try:
+        dpg.configure_item("update_tles_button", enabled=False)
+        dpg.configure_item("tles_status_text", default_value="Updating TLEs...")
+        dpg.configure_item("tles_loading_indicator", show=True)
+
+        update_tles()
+    except Exception as e:
+        dpg.configure_item("tles_status_text", show=True)
+        dpg.configure_item("tles_status_text", default_value=f"Error updating TLEs: {e}")
+    finally:
+        dpg.configure_item("tles_loading_indicator", show=False)
+        dpg.configure_item("update_tles_button", enabled=True)
+
+
+def update_tles_callback(sender, app_data, user_data):
+    threading.Thread(target=_update_tles_worker, daemon=True).start()
+
+
 def draw_settings_tab():
     config.load()
     with dpg.tab(label="Settings"):
@@ -35,9 +56,10 @@ def draw_settings_tab():
 
         with dpg.collapsing_header(label="Databases"):
             dpg.add_button(label="Update TLEs (Celestrak)", width=-1,
-                           callback=lambda: print("Fetching TLEs..."))
-            dpg.add_button(label="Fetch SatNOGS Transmitters", width=-1,
-                           callback=lambda: print("Fetching SatNOGS DB..."))
+                           callback=update_tles_callback, tag="update_tles_button")
+            dpg.add_loading_indicator(tag="tles_loading_indicator", show=False, speed=10)
+            dpg.add_text("", tag="tles_status_text", show=False)
+            dpg.add_button(label="Fetch SatNOGS Transmitters", width=-1, enabled=False)
 
             dpg.add_separator()
             dpg.add_text("SatNOGS Search Filters")
