@@ -1,8 +1,19 @@
 import dearpygui.dearpygui as dpg
 import os
+import threading
+import time
 from dopplerguesser.script_control.runner import FlowgraphRunner
 from dopplerguesser.misc.rigctl_query import query_rigctl
 from dopplerguesser.misc.constants import C
+from dopplerguesser.config import config
+
+from dopplerguesser.predict.fetch_tles import fetch_tles
+from dopplerguesser.predict.filters import (
+    filter_visibility, filter_heo, filter_geostationary,
+    filter_by_doppler, filter_constellations
+)
+from dopplerguesser.predict.matcher import score_candidates
+from dopplerguesser.predict.observer import Observer
 
 
 class LiveViewController:
@@ -14,14 +25,22 @@ class LiveViewController:
         self.clock_error = 0
         self.running = False
         self.limit = 1000
+        self.start_time = None
+        self.prediction_running = False
+        self.prediction_active = False
+        self.prediction_results = []
+        self.prediction_candidates = []
+        self.prediction_observer = None
+        self.update_interval = 5
+        self.fallback_sample_rate = 2e6
 
     def start_monitoring(self):
         if self.running:
             return
 
         self.clock_error = dpg.get_value("input_clock_error")
+        self.start_time = time.time()
 
-        sample_rate = 2e6
         correct_iq = dpg.get_value("chk_live_dc_spike")
 
         try:
@@ -32,6 +51,7 @@ class LiveViewController:
         except Exception as e:
             print(f"Rigctl query failed: {e}")
             dpg.set_value("txt_center_freq", "Central Frequency (Hz): Error/Unknown")
+            sample_rate = self.fallback_sample_rate
 
         params = {
             "sample_rate": sample_rate,
@@ -117,6 +137,179 @@ class LiveViewController:
                 f.write(f"{x},{y}\n")
         print("Live doppler data saved to live_doppler_data.csv")
 
+    def run_prediction(self):
+        if self.prediction_running:
+            return
+
+        if not self.plot_x or not self.plot_y:
+            dpg.set_value("prediction_status", "Error: No data available")
+            return
+
+        if not self.center_freq:
+            dpg.set_value("prediction_status", "Error: Center frequency unknown")
+            return
+
+        self.prediction_running = True
+        self.prediction_active = True
+        dpg.set_value("prediction_status", "Initializing prediction...")
+        dpg.configure_item("btn_predict", enabled=False)
+        dpg.configure_item("btn_stop_predict", enabled=True)
+
+        thread = threading.Thread(target=self._prediction_worker, daemon=True)
+        thread.start()
+
+    def stop_prediction(self):
+        if self.prediction_active:
+            print("Stopping prediction loop...")
+            self.prediction_active = False
+            dpg.set_value("prediction_status", "Prediction stopped")
+            dpg.configure_item("btn_predict", enabled=True)
+            dpg.configure_item("btn_stop_predict", enabled=False)
+
+    def _prediction_worker(self):
+        try:
+            self.prediction_observer = Observer(
+                lat=config["lat"],
+                lon=config["lon"],
+                alt=config["alt"]
+            )
+            print(f"Observer: {config['lat']}, {config['lon']}, {config['alt']}m")
+
+            satellites = fetch_tles(self.start_time)
+            print(f"Loaded {len(satellites)} satellites")
+
+            # Filtering
+            print(f"Initial candidates: {len(satellites)}")
+
+            # Constellation filter
+            if config["filter_constellations"]:
+                constellations = [
+                    c.strip().lower()
+                    for c in config["filter_constellations_list"].split(",")
+                    if c.strip()
+                ]
+                if constellations:
+                    satellites = filter_constellations(satellites, constellations)
+                    print(f"After constellation filter: {len(satellites)}")
+
+            # Geostationary filter
+            satellites = filter_geostationary(satellites)
+            print(f"After geostationary filter: {len(satellites)}")
+
+            # HEO filter
+            if config["filter_heo"]:
+                satellites = filter_heo(satellites)
+                print(f"After HEO filter: {len(satellites)}")
+
+            # Visibility filter
+            min_elev = config["filter_visibility_min_elevation"]
+            satellites = filter_visibility(
+                satellites, self.prediction_observer, self.start_time, min_elevation=min_elev
+            )
+            print(f"After visibility filter: {len(satellites)}")
+
+            if not satellites:
+                print("No satellites passed filters!")
+                dpg.set_value("prediction_status", "No satellites found")
+                self.prediction_running = False
+                self.prediction_active = False
+                dpg.configure_item("btn_predict", enabled=True)
+                dpg.configure_item("btn_stop_predict", enabled=False)
+                return
+
+            # Doppler filter
+            if config["filter_doppler"]:
+                if self.plot_x and self.plot_y:
+                    first_freq = self.center_freq + self.plot_y[0]
+                    threshold = config["filter_doppler_threshold"]
+                    satellites = filter_by_doppler(
+                        satellites, self.prediction_observer, self.start_time,
+                        self.center_freq, first_freq, threshold=threshold
+                    )
+                    print(f"After Doppler filter: {len(satellites)}")
+
+                    if not satellites:
+                        print("No satellites passed Doppler filter!")
+                        dpg.set_value("prediction_status", "No matches found")
+                        self.prediction_running = False
+                        self.prediction_active = False
+                        dpg.configure_item("btn_predict", enabled=True)
+                        dpg.configure_item("btn_stop_predict", enabled=False)
+                        return
+
+            # Track computation
+            # Observer
+            self.prediction_observer.compute_track(self.start_time, duration=config["propagation_cache_duration"])
+            print("Observer track computed")
+
+            # Satellites
+            for sat in satellites:
+                sat.compute_initial_state(self.start_time)
+            print("Satellites propagated via sgp4 to t0")
+
+            for sat in satellites:
+                sat.compute_track(self.start_time, duration=config["propagation_cache_duration"])
+            print("Candidate tracks created and cached")
+
+            self.prediction_candidates = satellites
+            dpg.set_value("prediction_status", f"Tracking {len(satellites)} candidates...")
+
+            # Scoring loop
+            while self.prediction_active:
+                measurements = [
+                    (dt, self.center_freq + shift)
+                    for dt, shift in zip(self.plot_x, self.plot_y)
+                ]
+
+                if not measurements:
+                    time.sleep(self.update_interval)
+                    continue
+
+                scored = score_candidates(
+                    self.prediction_candidates,
+                    measurements,
+                    self.center_freq,
+                    self.prediction_observer
+                )
+
+                self.prediction_results = scored[:10]
+                self._update_results_table()
+                dpg.set_value(
+                    "prediction_status",
+                    f"Active: {len(self.prediction_candidates)} candidates, {len(measurements)} points"
+                )
+                time.sleep(self.update_interval)
+
+        except Exception as e:
+            print(f"Prediction error: {e}")
+            dpg.set_value("prediction_status", f"Error: {str(e)}")
+        finally:
+            self.prediction_running = False
+            self.prediction_active = False
+            dpg.configure_item("btn_predict", enabled=True)
+            dpg.configure_item("btn_stop_predict", enabled=False)
+            print("Prediction worker thread finished.")
+
+    def _update_results_table(self):
+        # DPG table manipulation might need care.
+        # Safest: delete all rows and re-add.
+        # If table has a tag like "prediction_table", we can clear children.
+        # For now, we'll just update text in pre-existing rows (limited to 5).
+        # A better approach: dynamically create/delete rows. Let's do that.
+
+        # Clear existing rows (if we had tagged them)
+        # For simplicity, let's just update the existing 5 placeholder rows.
+        # In production, you'd want to dynamically add/remove rows.
+
+        for i in range(5):
+            if i < len(self.prediction_results):
+                sat, rmse = self.prediction_results[i]
+                dpg.set_value(f"prediction_sat_{i}", sat.satellite.name)
+                dpg.set_value(f"prediction_rmse_{i}", f"{rmse:.2f}")
+            else:
+                dpg.set_value(f"prediction_sat_{i}", "—")
+                dpg.set_value(f"prediction_rmse_{i}", "—")
+
 
 _live_controller = LiveViewController()
 
@@ -139,7 +332,8 @@ def draw_live_view_tab():
             dpg.add_separator()
             dpg.add_text("Parameters")
             dpg.add_text("Central Frequency (Hz): N/A", tag="txt_center_freq")
-            dpg.add_input_float(label="Clock Error (Hz)", tag="input_clock_error", default_value=0.0, step=10)
+            dpg.add_input_float(label="Clock Error (Hz)", tag="input_clock_error",
+                                default_value=0.0, step=10, width=200)
             dpg.add_checkbox(label="Remove DC Spike", tag="chk_live_dc_spike", default_value=True)
 
             dpg.add_spacer(height=5)
@@ -155,31 +349,25 @@ def draw_live_view_tab():
                 dpg.add_text("0.0 m/s", tag="live_velocity_text", color=(100, 255, 255))
 
         with dpg.collapsing_header(label="Predict", default_open=True):
-            dpg.add_text('Confirm PLL is locked and doppler readings are stable before predicting.')
-            dpg.add_button(label="Start predicting", width=-1,
-                           callback=lambda: print("Starting prediction..."))
-            dpg.add_text("Likelihood based on trajectory:")
+            dpg.add_text('Confirm PLL is locked and doppler readings are stable before predicting.', wrap=350)
+            dpg.add_button(label="Start Predicting", width=-1, tag="btn_predict",
+                           callback=lambda: _live_controller.run_prediction())
+            dpg.add_button(label="Stop", width=-1, tag="btn_stop_predict",
+                           callback=lambda: _live_controller.stop_prediction(), enabled=False)
+            dpg.add_text("Status: Idle", tag="prediction_status", color=(200, 200, 200))
+
+            dpg.add_separator()
+            dpg.add_text("Top Candidates (RMSE):")
 
             with dpg.table(header_row=True, borders_innerH=True, borders_outerH=True,
                            borders_innerV=True, borders_outerV=True, row_background=True):
                 dpg.add_table_column(label="Satellite", width_stretch=True)
-                dpg.add_table_column(label="MSE (Hz)", width_fixed=True, init_width_or_weight=50)
+                dpg.add_table_column(label="RMSE (Hz)", width_fixed=True, init_width_or_weight=100)
 
-                with dpg.table_row():
-                    dpg.add_text("satellite 1")
-                    dpg.add_text("600")
-                with dpg.table_row():
-                    dpg.add_text("satellite 2")
-                    dpg.add_text("3000")
-                with dpg.table_row():
-                    dpg.add_text("satellite 3")
-                    dpg.add_text("6000")
-                with dpg.table_row():
-                    dpg.add_text("satellite 4")
-                    dpg.add_text("10000")
-                with dpg.table_row():
-                    dpg.add_text("satellite 5")
-                    dpg.add_text("15000")
+                for i in range(5):
+                    with dpg.table_row():
+                        dpg.add_text("—", tag=f"prediction_sat_{i}")
+                        dpg.add_text("—", tag=f"prediction_rmse_{i}")
 
         with dpg.collapsing_header(label="Doppler Curve", default_open=True):
             with dpg.plot(label="Doppler History", height=200, width=-1):
@@ -187,8 +375,8 @@ def draw_live_view_tab():
                 dpg.add_plot_axis(dpg.mvXAxis, label="Time (s)", tag="live_doppler_xaxis")
                 with dpg.plot_axis(dpg.mvYAxis, label="Shift (Hz)", tag="live_doppler_yaxis"):
                     dpg.add_line_series([], [], label="Measured", tag="live_doppler_series")
-                    dpg.add_button(label="Remove last point", width=-1, callback=_live_controller.remove_last_point())
+                    dpg.add_button(label="Remove last point", width=-1, callback=_live_controller.remove_last_point)
                     dpg.add_spacer(height=5)
-                    dpg.add_button(label="Clear", width=-1, callback=_live_controller.clear_plot())
+                    dpg.add_button(label="Clear", width=-1, callback=_live_controller.clear_plot)
                     dpg.add_button(label="Save Plot Data", width=-1,
-                                   callback=lambda: _live_controller.save_plot_data())
+                                   callback=_live_controller.save_plot_data)
