@@ -2,8 +2,7 @@ import dearpygui.dearpygui as dpg
 import os
 from dopplerguesser.script_control.runner import FlowgraphRunner
 from dopplerguesser.misc.rigctl_query import query_rigctl
-
-C = 299792458
+from dopplerguesser.misc.constants import C
 
 
 class LiveViewController:
@@ -104,6 +103,20 @@ class LiveViewController:
             return True
         return False
 
+    def remove_last_point(self):
+        if self.plot_x:
+            self.plot_x.pop()
+        if self.plot_y:
+            self.plot_y.pop()
+        dpg.configure_item("live_doppler_series", x=self.plot_x, y=self.plot_y)
+
+    def save_plot_data(self):
+        with open("live_doppler_data.csv", "w") as f:
+            f.write("Time(s),DopplerOffset(Hz)\n")
+            for x, y in zip(self.plot_x, self.plot_y):
+                f.write(f"{x},{y}\n")
+        print("Live doppler data saved to live_doppler_data.csv")
+
 
 _live_controller = LiveViewController()
 
@@ -150,23 +163,23 @@ def draw_live_view_tab():
             with dpg.table(header_row=True, borders_innerH=True, borders_outerH=True,
                            borders_innerV=True, borders_outerV=True, row_background=True):
                 dpg.add_table_column(label="Satellite", width_stretch=True)
-                dpg.add_table_column(label="Conf.", width_fixed=True, init_width_or_weight=50)
+                dpg.add_table_column(label="MSE (Hz)", width_fixed=True, init_width_or_weight=50)
 
                 with dpg.table_row():
                     dpg.add_text("satellite 1")
-                    dpg.add_text("83%")
+                    dpg.add_text("600")
                 with dpg.table_row():
                     dpg.add_text("satellite 2")
-                    dpg.add_text("10%")
+                    dpg.add_text("3000")
                 with dpg.table_row():
                     dpg.add_text("satellite 3")
-                    dpg.add_text("5%")
+                    dpg.add_text("6000")
                 with dpg.table_row():
                     dpg.add_text("satellite 4")
-                    dpg.add_text("1%")
+                    dpg.add_text("10000")
                 with dpg.table_row():
                     dpg.add_text("satellite 5")
-                    dpg.add_text("0.5%")
+                    dpg.add_text("15000")
 
         with dpg.collapsing_header(label="Doppler Curve", default_open=True):
             with dpg.plot(label="Doppler History", height=200, width=-1):
@@ -174,4 +187,8 @@ def draw_live_view_tab():
                 dpg.add_plot_axis(dpg.mvXAxis, label="Time (s)", tag="live_doppler_xaxis")
                 with dpg.plot_axis(dpg.mvYAxis, label="Shift (Hz)", tag="live_doppler_yaxis"):
                     dpg.add_line_series([], [], label="Measured", tag="live_doppler_series")
-                    dpg.add_button(label="Clear", width=-1, callback=lambda: _live_controller.clear_plot())
+                    dpg.add_button(label="Remove last point", width=-1, callback=_live_controller.remove_last_point())
+                    dpg.add_spacer(height=5)
+                    dpg.add_button(label="Clear", width=-1, callback=_live_controller.clear_plot())
+                    dpg.add_button(label="Save Plot Data", width=-1,
+                                   callback=lambda: _live_controller.save_plot_data())
