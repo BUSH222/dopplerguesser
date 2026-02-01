@@ -37,7 +37,7 @@ class FlowgraphRunner:
 
         cmd = [python_exec, self.script_path]
         for key, value in self.params.items():
-            cmd.append(f"--{key}")
+            cmd.append(f"-{key}")
             cmd.append(str(value))
         print(f"Launching flowgraph: {' '.join(cmd)}")
 

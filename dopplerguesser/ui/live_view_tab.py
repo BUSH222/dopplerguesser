@@ -54,8 +54,8 @@ class LiveViewController:
             sample_rate = self.fallback_sample_rate
 
         params = {
-            "sample_rate": sample_rate,
-            "remove_dc_spike": int(correct_iq)
+            "s": sample_rate,
+            "d": int(correct_iq)
         }
 
         script_path = os.path.abspath(os.path.join("gr_scripts", "pll_estimator.py"))

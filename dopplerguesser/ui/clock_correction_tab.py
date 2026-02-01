@@ -19,8 +19,8 @@ class ClockCorrectionController:
         correct_iq = dpg.get_value("chk_remove_dc_spike")
         _, sample_rate = query_rigctl()
         params = {
-            "sample_rate": sample_rate,
-            "remove_dc_spike": int(correct_iq)
+            "s": sample_rate,
+            "d": int(correct_iq)
         }
         self.runner = FlowgraphRunner(script_path, port=12346, params=params)
         self.plot_x = []
