@@ -25,7 +25,6 @@ class LiveViewController:
         self.clock_error = 0
         self.running = False
         self.limit = 1000
-        self.start_time = None
         self.prediction_running = False
         self.prediction_active = False
         self.prediction_results = []
@@ -39,8 +38,6 @@ class LiveViewController:
             return
 
         self.clock_error = dpg.get_value("input_clock_error")
-        self.start_time = time.time() + 5  # Runner startup delay
-
         correct_iq = dpg.get_value("chk_live_dc_spike")
 
         try:
@@ -171,7 +168,7 @@ class LiveViewController:
                 return
 
             t_zero_offset = self.plot_x[0]
-            prediction_t_start = self.start_time + t_zero_offset
+            prediction_t_start = self.runner.first_reception_time + t_zero_offset
 
             self.prediction_observer = Observer(
                 lat=config["lat"],
