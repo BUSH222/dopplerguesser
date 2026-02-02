@@ -39,7 +39,7 @@ class LiveViewController:
             return
 
         self.clock_error = dpg.get_value("input_clock_error")
-        self.start_time = time.time()
+        self.start_time = time.time() + 5  # Runner startup delay
 
         correct_iq = dpg.get_value("chk_live_dc_spike")
 
@@ -79,8 +79,8 @@ class LiveViewController:
     def handle_data(self, data_list):
         for sec, val in data_list:
             self.plot_x.append(sec)
-            self.plot_y.append(val)
-            self.update_ui(val)
+            self.plot_y.append(val-self.clock_error)
+            self.update_ui(val-self.clock_error)
 
         self.update_plot()
 
@@ -94,9 +94,7 @@ class LiveViewController:
         dpg.set_value("live_doppler_text", f"{current_offset:.2f} Hz")
 
         if self.center_freq > 0:
-            # v = ((offset - clock_error) / f0) * c
-            shift = current_offset - self.clock_error
-            v = (shift / self.center_freq) * C
+            v = (current_offset / self.center_freq) * C
             dpg.set_value("live_velocity_text", f"{v:.2f} m/s")
 
     def update_plot(self):
@@ -168,6 +166,13 @@ class LiveViewController:
 
     def _prediction_worker(self):
         try:
+            if not self.plot_x:
+                dpg.set_value("prediction_status", "Error: No doppler data available")
+                return
+
+            t_zero_offset = self.plot_x[0]
+            prediction_t_start = self.start_time + t_zero_offset
+
             self.prediction_observer = Observer(
                 lat=config["lat"],
                 lon=config["lon"],
@@ -175,7 +180,7 @@ class LiveViewController:
             )
             print(f"Observer: {config['lat']}, {config['lon']}, {config['alt']}m")
 
-            satellites = fetch_tles(self.start_time)
+            satellites = fetch_tles(prediction_t_start)
             print(f"Loaded {len(satellites)} satellites")
 
             # Filtering
@@ -204,7 +209,7 @@ class LiveViewController:
             # Visibility filter
             min_elev = config["filter_visibility_min_elevation"]
             satellites = filter_visibility(
-                satellites, self.prediction_observer, self.start_time, min_elevation=min_elev
+                satellites, self.prediction_observer, prediction_t_start, min_elevation=min_elev
             )
             print(f"After visibility filter: {len(satellites)}")
 
@@ -223,7 +228,7 @@ class LiveViewController:
                     first_freq = self.center_freq + self.plot_y[0]
                     threshold = config["filter_doppler_threshold"]
                     satellites = filter_by_doppler(
-                        satellites, self.prediction_observer, self.start_time,
+                        satellites, self.prediction_observer, prediction_t_start,
                         self.center_freq, first_freq, threshold=threshold
                     )
                     print(f"After Doppler filter: {len(satellites)}")
@@ -238,17 +243,15 @@ class LiveViewController:
                         return
 
             # Track computation
-            # Observer
-            self.prediction_observer.compute_track(self.start_time, duration=config["propagation_cache_duration"])
+            self.prediction_observer.compute_track(prediction_t_start, duration=config["propagation_cache_duration"])
             print("Observer track computed")
 
-            # Satellites
             for sat in satellites:
-                sat.compute_initial_state(self.start_time)
+                sat.compute_initial_state(prediction_t_start)
             print("Satellites propagated via sgp4 to t0")
 
             for sat in satellites:
-                sat.compute_track(self.start_time, duration=config["propagation_cache_duration"])
+                sat.compute_track(prediction_t_start, duration=config["propagation_cache_duration"])
             print("Candidate tracks created and cached")
 
             self.prediction_candidates = satellites
@@ -257,7 +260,7 @@ class LiveViewController:
             # Scoring loop
             while self.prediction_active:
                 measurements = [
-                    (dt, self.center_freq + shift)
+                    (dt - t_zero_offset, self.center_freq + shift)
                     for dt, shift in zip(self.plot_x, self.plot_y)
                 ]
 
@@ -291,16 +294,6 @@ class LiveViewController:
             print("Prediction worker thread finished.")
 
     def _update_results_table(self):
-        # DPG table manipulation might need care.
-        # Safest: delete all rows and re-add.
-        # If table has a tag like "prediction_table", we can clear children.
-        # For now, we'll just update text in pre-existing rows (limited to 5).
-        # A better approach: dynamically create/delete rows. Let's do that.
-
-        # Clear existing rows (if we had tagged them)
-        # For simplicity, let's just update the existing 5 placeholder rows.
-        # In production, you'd want to dynamically add/remove rows.
-
         for i in range(5):
             if i < len(self.prediction_results):
                 sat, rmse = self.prediction_results[i]
