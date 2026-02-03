@@ -8,33 +8,47 @@ def score_candidates(candidates, measurements, center_freq, observer):
     if measurement_count == 0:
         return []
 
+    obs_freqs = np.array([m[1] for m in measurements])
+    obs_mean = np.mean(obs_freqs)
+    obs_normalized = obs_freqs - obs_mean
+
     for sat in candidates:
         if sat.track_positions is None:
             continue
 
-        squared_error_sum = 0.0
-        valid_points = 0
+        pred_freqs = []
+        valid_mask = []
 
-        for dt, freq_meas in measurements:
+        for dt, _ in measurements:
             r_sat, v_sat = sat.get_state_from_track(dt)
             r_obs, _ = observer.get_state_from_track(dt)
 
             if r_sat is None or r_obs is None:
+                valid_mask.append(False)
+                pred_freqs.append(0.0)
                 continue
 
+            valid_mask.append(True)
             v_obs = calculate_v_obs(r_obs)
-
             rr = calculate_range_rate_simple(r_sat, v_sat, r_obs, v_obs)
-
             shift = -(rr * 1000.0 / C) * center_freq
-            measured_shift = freq_meas - center_freq
-            resid = shift - measured_shift
-            squared_error_sum += resid * resid
-            valid_points += 1
+            pred_freqs.append(center_freq + shift)
 
-        if valid_points > 0:
-            rmse = np.sqrt(squared_error_sum / valid_points)
-            results.append((sat, rmse))
+        pred_freqs = np.array(pred_freqs)
+        valid_mask = np.array(valid_mask)
+
+        if not np.any(valid_mask):
+            continue
+
+        # Normalize predicted frequencies
+        pred_mean = np.mean(pred_freqs[valid_mask])
+        pred_normalized = pred_freqs - pred_mean
+
+        # Calculate RMSE on normalized data
+        residuals = (obs_normalized - pred_normalized)[valid_mask]
+        rmse = np.sqrt(np.mean(residuals ** 2))
+
+        results.append((sat, rmse))
 
     results.sort(key=lambda x: x[1])
     return results
