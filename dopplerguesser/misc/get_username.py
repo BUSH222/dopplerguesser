@@ -1,10 +1,10 @@
+import getpass
 import os
-import pwd
 
 
 def get_username():
     try:
-        res = pwd.getpwuid(os.getuid())[0]
+        res = getpass.getuser()
         assert isinstance(res, str) and res
         return res
     except Exception:
