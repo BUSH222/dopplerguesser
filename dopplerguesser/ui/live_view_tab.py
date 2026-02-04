@@ -22,7 +22,6 @@ class LiveViewController:
         self.plot_x = []
         self.plot_y = []
         self.center_freq = 0
-        self.clock_error = 0
         self.running = False
         self.limit = 1000
         self.prediction_running = False
@@ -37,7 +36,6 @@ class LiveViewController:
         if self.running:
             return
 
-        self.clock_error = dpg.get_value("input_clock_error")
         correct_iq = dpg.get_value("chk_live_dc_spike")
 
         try:
@@ -76,18 +74,12 @@ class LiveViewController:
     def handle_data(self, data_list):
         for sec, val in data_list:
             self.plot_x.append(sec)
-            self.plot_y.append(val-self.clock_error)
-            self.update_ui(val-self.clock_error)
+            self.plot_y.append(val)
+            self.update_ui(val)
 
         self.update_plot()
 
     def update_ui(self, current_offset):
-        if self.pll_locked():
-            dpg.set_value("live_pll_status", "PLL is Locked")
-            dpg.configure_item("live_pll_status", color=(100, 255, 100))
-        else:
-            dpg.set_value("live_pll_status", "PLL is Unlocked")
-            dpg.configure_item("live_pll_status", color=(255, 100, 100))
         dpg.set_value("live_doppler_text", f"{current_offset:.2f} Hz")
 
         if self.center_freq > 0:
@@ -109,14 +101,6 @@ class LiveViewController:
         self.plot_x = []
         self.plot_y = []
         dpg.configure_item("live_doppler_series", x=[], y=[])
-
-    def pll_locked(self):
-        if len(self.plot_y) < 20:
-            return False
-        recent = self.plot_y[-20:]
-        if max(recent) - min(recent) < 1000:
-            return True
-        return False
 
     def remove_last_point(self):
         if self.plot_x:
@@ -322,14 +306,10 @@ def draw_live_view_tab():
             dpg.add_separator()
             dpg.add_text("Parameters")
             dpg.add_text("Central Frequency (Hz): N/A", tag="txt_center_freq")
-            dpg.add_input_float(label="Clock Error (Hz)", tag="input_clock_error",
-                                default_value=0.0, step=10, width=200)
             dpg.add_checkbox(label="Remove DC Spike", tag="chk_live_dc_spike", default_value=True)
 
             dpg.add_spacer(height=5)
             dpg.add_text("Live Readings:")
-
-            dpg.add_text('PLL is unlocked', color=(255, 100, 100), tag="live_pll_status")
             with dpg.group(horizontal=True):
                 dpg.add_text("Doppler Offset: ")
                 dpg.add_text("0.0 Hz", tag="live_doppler_text", color=(100, 255, 100))
