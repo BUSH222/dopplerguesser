@@ -2,6 +2,7 @@ import dearpygui.dearpygui as dpg
 import os
 import threading
 import time
+from datetime import datetime
 from dopplerguesser.script_control.runner import FlowgraphRunner
 from dopplerguesser.misc.rigctl_query import query_rigctl
 from dopplerguesser.misc.constants import C
@@ -110,11 +111,20 @@ class LiveViewController:
         dpg.configure_item("live_doppler_series", x=self.plot_x, y=self.plot_y)
 
     def save_plot_data(self):
-        with open("live_doppler_data.csv", "w") as f:
+        if self.prediction_results:
+            top_candidate = self.prediction_results[0][0].satellite.name
+            top_candidate = "".join(c if c.isalnum() or c in ('-', '_') else '_' for c in top_candidate)
+        else:
+            top_candidate = "unknown"
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{top_candidate}_{timestamp}_doppler_data.csv"
+        first_reception_time = self.runner.first_reception_time if self.runner else 0
+        with open(filename, "w") as f:
             f.write("Time(s),DopplerOffset(Hz)\n")
             for x, y in zip(self.plot_x, self.plot_y):
-                f.write(f"{x},{y}\n")
-        print("Live doppler data saved to live_doppler_data.csv")
+                absolute_time = x + first_reception_time
+                f.write(f"{absolute_time},{y}\n")
+        print(f"Live doppler data saved to {filename}")
 
     def run_prediction(self):
         if self.prediction_running:
