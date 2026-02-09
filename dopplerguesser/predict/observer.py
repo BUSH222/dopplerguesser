@@ -3,6 +3,7 @@ import numpy as np
 from dopplerguesser.predict.propagator import init_earth_rotation, propagate_earth_rotation
 from dopplerguesser.misc.constants import omega_earth
 from dopplerguesser.misc.timetools import unix_to_skyfield
+from dopplerguesser.misc.mocks import SimpleTime
 
 
 class Observer:
@@ -55,6 +56,20 @@ class Observer:
             positions.append(r_gcrs)
             velocities.append(v_gcrs)
 
+        self.set_track(t_start_sf, np.array(positions), np.array(velocities))
+
+    def compute_track_precise(self, t_start_unix, duration=1000, step=1):
+        '''Expensive function that computes the track by querying skyfield for each time step.'''
+        t_start_sf = unix_to_skyfield(t_start_unix)
+        positions, velocities = [], []
+        times = np.arange(0, duration, step)
+        for dt in times:
+            t_req = SimpleTime(t_start_sf.tt + dt/86400.0)
+            obs_state = self.location.at(t_req)
+            pos = obs_state.position.km
+            vel = obs_state.velocity.km_per_s
+            positions.append(pos)
+            velocities.append(vel)
         self.set_track(t_start_sf, np.array(positions), np.array(velocities))
 
     def get_state_from_track(self, t_offset):

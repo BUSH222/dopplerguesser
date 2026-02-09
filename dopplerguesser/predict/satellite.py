@@ -66,6 +66,20 @@ class Satellite:
 
         self.set_track(t_start_sf, np.array(positions), np.array(velocities))
 
+    def compute_track_precise(self, t_start_unix, duration=1000, step=1):
+        '''Expensive function that computes the track by querying skyfield for each time step.'''
+        t_start_sf = unix_to_skyfield(t_start_unix)
+        positions, velocities = [], []
+        times = np.arange(0, duration, step)
+        for dt in times:
+            t_req = SimpleTime(t_start_sf.tt + dt/86400.0)
+            sat_state = self.satellite.at(t_req)
+            pos = sat_state.position.km
+            vel = sat_state.velocity.km_per_s
+            positions.append(pos)
+            velocities.append(vel)
+        self.set_track(t_start_sf, np.array(positions), np.array(velocities))
+
     def get_state_from_track(self, t_offset):
         if self.track_positions is None:
             return None, None

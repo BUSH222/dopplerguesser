@@ -152,20 +152,37 @@ class ProcessingViewController:
                     self.prediction_running = False
                     dpg.configure_item("btn_predict_processing", enabled=True)
                     return
+            use_precise = dpg.get_value("processing_precise_propagation")
+            if not use_precise:
+                dpg.set_value("processing_status", f"Computing tracks for {len(satellites)} candidates...")
+                self.prediction_observer.compute_track(prediction_t_start,
+                                                       duration=config["propagation_cache_duration"])
+                print("Observer track computed")
 
-            dpg.set_value("processing_status", f"Computing tracks for {len(satellites)} candidates...")
-            self.prediction_observer.compute_track(prediction_t_start, duration=config["propagation_cache_duration"])
-            print("Observer track computed")
+                for sat in satellites:
+                    sat.compute_initial_state(prediction_t_start)
+                print("Satellites propagated via sgp4 to t0")
 
-            for sat in satellites:
-                sat.compute_initial_state(prediction_t_start)
-            print("Satellites propagated via sgp4 to t0")
+                for sat in satellites:
+                    sat.compute_track(prediction_t_start, duration=config["propagation_cache_duration"])
+                print("Candidate tracks created and cached")
 
-            for sat in satellites:
-                sat.compute_track(prediction_t_start, duration=config["propagation_cache_duration"])
-            print("Candidate tracks created and cached")
+                self.prediction_candidates = satellites
+            else:
+                dpg.set_value("processing_status", f"Computing tracks for {len(satellites)} candidates...")
+                self.prediction_observer.compute_track_precise(prediction_t_start,
+                                                               duration=config["propagation_cache_duration"])
+                print("Observer track computed")
 
-            self.prediction_candidates = satellites
+                for sat in satellites:
+                    sat.compute_initial_state(prediction_t_start)
+                print("Satellites propagated via sgp4 to t0")
+
+                for sat in satellites:
+                    sat.compute_track_precise(prediction_t_start, duration=config["propagation_cache_duration"])
+                print("Candidate tracks created and cached")
+
+                self.prediction_candidates = satellites
 
             t_zero = self.plot_x[0]
             measurements = [
@@ -234,7 +251,7 @@ def draw_processing_tab():
             dpg.add_input_text(default_value="", width=-1, enabled=False)  # TODO
         with dpg.collapsing_header(label="Processing Options", default_open=True):
             dpg.add_checkbox(label="Use precise propagation (slower)", tag="processing_precise_propagation",
-                             default_value=False)  # TODO
+                             default_value=False)
             dpg.add_text("Central frequency (Mhz)")
             dpg.add_input_text(tag="processing_central_freq", width=-1)
             dpg.add_text("Input CSV file path")
