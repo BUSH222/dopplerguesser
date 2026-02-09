@@ -3,7 +3,6 @@ import numpy as np
 from dopplerguesser.predict.propagator import init_earth_rotation, propagate_earth_rotation
 from dopplerguesser.misc.constants import omega_earth
 from dopplerguesser.misc.timetools import unix_to_skyfield
-from dopplerguesser.misc.mocks import SimpleTime
 
 
 class Observer:
@@ -64,7 +63,7 @@ class Observer:
         positions, velocities = [], []
         times = np.arange(0, duration, step)
         for dt in times:
-            t_req = SimpleTime(t_start_sf.tt + dt/86400.0)
+            t_req = t_start_sf + dt/86400.0
             obs_state = self.location.at(t_req)
             pos = obs_state.position.km
             vel = obs_state.velocity.km_per_s

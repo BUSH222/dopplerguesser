@@ -72,7 +72,7 @@ class Satellite:
         positions, velocities = [], []
         times = np.arange(0, duration, step)
         for dt in times:
-            t_req = SimpleTime(t_start_sf.tt + dt/86400.0)
+            t_req = t_start_sf + dt/86400.0
             sat_state = self.satellite.at(t_req)
             pos = sat_state.position.km
             vel = sat_state.velocity.km_per_s

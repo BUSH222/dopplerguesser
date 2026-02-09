@@ -9,8 +9,12 @@ def update_tles():
         f.write("\n".join(tlesource) + "\n")
 
 
-def load_tles():
-    tle_file_path = os.path.join(os.path.dirname(__file__), "tles.txt")
+def load_tles(tle_file_path=None):
+    if tle_file_path is None:
+        tle_file_path = os.path.join(os.path.dirname(__file__), "tles.txt")
+    else:
+        tle_file_path = os.path.abspath(tle_file_path)
+
     tles = []
     if os.path.exists(tle_file_path):
         with open(tle_file_path, "r") as f:
