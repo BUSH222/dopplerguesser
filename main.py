@@ -2,7 +2,7 @@ import dearpygui.dearpygui as dpg
 from dopplerguesser.ui.live_view_tab import draw_live_view_tab
 from dopplerguesser.ui.settings_tab import draw_settings_tab
 from dopplerguesser.ui.clock_correction_tab import draw_clock_correction_tab
-from dopplerguesser.ui.debug_tab import draw_debug_tab
+from dopplerguesser.ui.processing_tab import draw_processing_tab
 
 dpg.create_context()
 
@@ -11,7 +11,7 @@ with dpg.window(tag="Primary Window"):
         draw_live_view_tab()
         draw_settings_tab()
         draw_clock_correction_tab()
-        draw_debug_tab()
+        draw_processing_tab()
 
 dpg.create_viewport(title='Doppler Guesser', width=400, height=800)
 dpg.setup_dearpygui()
