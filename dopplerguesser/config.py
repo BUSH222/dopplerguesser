@@ -7,9 +7,9 @@ class ConfigManager:
     _instance = None
     CONFIG_FILE = "config.json"
     DEFAULTS = {
-        "lat": 55.7,
-        "lon": 37.1,
-        "alt": 170.0,
+        "lat": 0.0,
+        "lon": 0.0,
+        "alt": 0.0,
         "alive_only": True,
         "gr_path": f"/Users/{get_username()}/radioconda/bin/python",
         "gr_tcp": "localhost:12346",
@@ -17,7 +17,7 @@ class ConfigManager:
         "filter_constellations": True,
         "filter_constellations_list": "starlink,oneweb",
         "filter_heo": True,
-        "filter_doppler": True,
+        "filter_doppler": False,
         "filter_doppler_threshold": 10000,
         "filter_visibility_min_elevation": 0,
         "propagation_cache_duration": 1000,
