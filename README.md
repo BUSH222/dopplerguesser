@@ -1,10 +1,21 @@
 # Dopplerguesser
-A project that extracts doppler signatures from satellite passes and guesses what satellite it is automatically.
+**An application that determines what satellite you are receiving based on the doppler signature of its signal.**
 
-To be written after the first version is released
+It is designed to work in conjunction with [SDR++](https://github.com/AlexandreRouma/SDRPlusPlus), a cross-platform and open source SDR software. 
+> Note: If you are using MacOS, the IQ exporter module vital for this application to work is missing from the official builds. Download SDR++ from my [fork](https://github.com/BUSH222/SDRPlusPlus) instead.
 
-# TODO:
-- new condition for PLL lock status
-- fetch new tles and update satnogs transmitters
-- convert rmse to rmspe 
-- live view tab view controller
+--
+
+## Table of Contents
+
+## Installation
+
+## Usage
+
+## Algorithm
+
+## License
+
+## Acknowledgements
+
+## References
