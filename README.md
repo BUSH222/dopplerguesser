@@ -58,7 +58,7 @@ The program is tall and narrow on purpose to fit nicely along SDR++ in split vie
 > Always update TLEs before use! TLEs are valid for a week at most, and their precision is constantly going down. The fresher the TLEs, the better the precision of the app.
 1) Identify a continuous signal exhibiting doppler shift
 2) Move IQ Exporter's VFO to roughly around the signal. 
-> Tuning tip: Doppler shift from LEO satellites only makes the frequency only go down over time, so tune a bit lower than the frequency.
+> Tuning tip: Doppler shift from LEO satellites makes the frequency go down over time, so tune a bit lower than the frequency.
 3) With IQ Exporter and Rigctl server running in SDR++, click `Connect` in the live view tab of the application. After ~5 seconds the frequency readings will start appearing in the Doppler History graph.
 4) Wait for the PLL to lock onto the signal. The stronger and closer to 0 it is, the faster it will lock. The lock will be signified by a sharp peak (or drop) followed by a slowly descending plateau.
 5) Once locked, clear the irrelevant pll locking data by pressing the clear button.
@@ -96,7 +96,7 @@ The calibration works by measuring the apparent frequency offset of a signal tha
 Always update TLEs before starting an observation. TLEs get old and imprecise very quickly, leading to big errors between predicted and observed data.
 
 #### Classified TLEs
-The celestrak's API is not perfect: it omits some TLEs, such as, for example, the TLEs for the NOSS-3 series satellites. Manually add their TLEs and run the .csv through the processing tab.
+The Celestrak API is not perfect: it omits some TLEs, such as, for example, the TLEs for the NOSS-3 series satellites. Manually add their TLEs and run the .csv through the processing tab.
 
 
 ## Algorithm
@@ -117,7 +117,7 @@ $$ f_{\text{doppler}}(t) = \frac{\omega_{\text{PLL}}(t) \cdot f_s}{2\pi} $$
 
 The signal is smoothed using a moving average filter with window size $N = 1000$ samples, then decimated to produce approximately $N$ measurements per second. These measurements are fed into a TCP Sink which enables the connection with the main application.
 
-The main application averages the data even more: It collects all the incoming data every second separates it into bins. All observations coming in at $[N-0.5, N+0.5)$, where N is an integer corresponding to a unix timestamp, get averaged to eliminate most of the drift in the PLL.
+The main application averages the data even more: It collects all the incoming data every second and separates it into bins. All observations coming in at $[N-0.5, N+0.5)$, where N is an integer corresponding to a unix timestamp, get averaged to eliminate most of the drift in the PLL.
 
 ### 2. Frequency to relative speed
 The classic doppler shift formula is defined as
@@ -183,7 +183,7 @@ $$n\Delta t =\Delta E - (1 - \frac{r_0}{a})\sin(\Delta E) + \frac{\mathbf{r}_0 \
 with $a$ being the semi-major axis, $n = \sqrt{\mu/a^3}$ the mean motion, and $\mu = 3.986004418 \times 10^5 km^3/s^2$ the Earth's gravitational parameter.
 
 #### Observer
-The calculation of the Observer's position is similar in approach: It calculates 1 precise value, accounting for Earth's gyroscopic precession and nutation using skyfield, and then simply rotating the earth for all other points: 
+The calculation of the Observer's position is similar in approach: It calculates one precise value, accounting for Earth's gyroscopic precession and nutation using skyfield, and then simply rotates the earth for all other points: 
 
 
 The GCRS position at time $t = t_0 + \Delta t$ is:
@@ -196,12 +196,12 @@ $$ \mathbf{v}_{\text{obs}} = \boldsymbol{\omega}_{\oplus} \times \mathbf{r}_{\te
 
 All the simplified models can be replaced with more precise but computationally intensive models in the processing tab, but it usually does not yield better results.
 ### 4. Candidate selection
-Celestrak's API currently provides 15000 TLEs for different satellites. Even with all the optimizations described above, propagating all these TLEs will take way too long. So, to reduce computational load some filters are applied. All of these filters are toggleable in application settings.
+The Celestrak API currently provides 15000 TLEs for different satellites. Even with all the optimizations described above, propagating all these TLEs will take way too long. So, to reduce computational load some filters are applied. All of these filters are toggleable in application settings.
 
 1. **Geostationary Filter:** Reject satellites with $n < 6$ revolutions per day. This project focuses on LEO and MEO satellites, with clearly observable doppler shift over short periods of time to mitigate the SDR receiver's clock drifting.
 2. **HEO Filter:** Reject satellites with eccentricity $e > 0.25$ (optional)
 3. **Visibility Filter:** Require elevation angle at $t_0$ $\theta_{\text{el}} > \theta_{\text{min}}$ (default 0°)
-4. **Constellation Filter:** Exclude specified mega-constellations (e.g., Starlink, OneWeb). This filter alone eliminates 2/3 of the satellites provided by celestrak.
+4. **Constellation Filter:** Exclude specified mega-constellations (e.g., Starlink, OneWeb). This filter alone eliminates 2/3 of the satellites provided by Celestrak.
 5. **Doppler Pre-filter:** Reject if $|\Delta f_{\text{predicted}}(t_0) - \Delta f_{\text{observed}}(t_0)| > \epsilon$ (default threshold $\epsilon = 10000$ Hz). This helps eliminate descending satellites when the target is ascending, for example. However, if the tuning is imprecise this filter can accidentally cut the target.
 
 ### 5. Candidate Scoring
