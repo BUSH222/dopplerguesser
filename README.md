@@ -106,6 +106,7 @@ This section will describe the algorithmic approach used in this application.
 The signal processing in this project is done with GNURadio, using the PLL Frequency Detector block. Here is the flowgraph:
 ![Flowgraph](readme_materials/flowgraph.png)
 The flowgraph accepts 2 parameters: sample rate and whether to remove the DC spike or not. The source of this flowgraph is a TCP Source which is directly connected to the IQ Exporter in SDR++. It outputs int16, or "short" samples which are converted and scaled to complex float 32. The data then gets throttled, and the DC spike gets removed if the parameter was specified (Important for the HackRF, for example, where the PLL keeps locking onto the DC spike even with another signal present). Then comes the PLL Frequency Detector, which is running a phase locked loop with the following parameters:
+
 $$ Loop\ bandwidth = \frac{\pi}{10000}, \quad \omega_{\text{max}} = \frac{2\pi \cdot f_{\text{max-doppler}}}{f_s}, \quad \omega_{\text{min}} = \frac{-2\pi \cdot f_{\text{max-doppler}}}{f_s} $$
 
 The max doppler in this case is 70KHz, which allows for operation on S-band and below. Future versions of this program will have configurable max doppler bounds and the loop bandwidth.
@@ -120,26 +121,45 @@ The main application averages the data even more: It collects all the incoming d
 
 ### 2. Frequency to relative speed
 The classic doppler shift formula is defined as
+
 $$f_{obs} = \frac{c + v_0}{c - v_s} \cdot f_{sat}$$
+
 However, this formula is cumbersome to use, so let's simplify a bit:
+
 $$\frac{f_{obs}}{f_{sat}} = \frac{c + v_0}{c - v_s}$$
+
 $$\frac{f_{obs}}{f_{sat}} = \frac{c(1 + v_0/c)}{c(1 - v_s/c)} = \frac{1 + v_0/c}{1 - v_s/c}= (1 + v_0/c)(1 - v_s/c)^{-1}$$
-This can be expressed through the binomial expansion for $ (1 + v_s/c)^{-1}$:
+
+This can be expressed through the binomial expansion for $(1 + v_s/c)^{-1}$:
+
 $$(1 - v_s/c)^{-1} = 1 + v_s/c + (v_s/c)^2 + (v_s/c)^3 + ...$$
+
 After multiplying, expanding up to second order and grouping by order:
+
 $$\frac{f_{obs}}{f_{sat}} = (1 + v_0/c)(1 + v_s/c + (v_s/c)^2 + ...) = \\1 + v_s/c + (v_s/c)^2 + v_0/c + v_0 v_s/c^2 + ...=\\1 + \frac{v_0 + v_s}{c} + \frac{v_s^2 + v_0 v_s}{c^2} + ...$$
+
 We can define the relative velocity and determine that it is much less than the speed of light for earth satellite applications: $ v_{rel} = v_0+v_s << c$.
 
 *Note: Worst case scenario relative velocity here would not exceed $1.2*10^4$ m/s (earth escape velocity + rotation at equator) compared to the speed of light at $3*10^8$ m/s*
 
 Keeping only the first two terms we get:
+
 $$\frac{f_{obs}}{f_{sat}} \approx 1 + \frac{v_{rel}}{c}$$
+
 or:
+
 $$\boxed{v_{rel} \approx \left(\frac{f_{obs}}{f_{sat}} - 1\right) \cdot c}$$
+
 #### Approximation error estimation:
-The term we dropped is: $$\frac{v_s^2 + v_0 v_s}{c^2} = \frac{v_s(v_s + v_0)}{c^2} = \frac{v_s \cdot v_{rel}}{c^2}$$
+
+The term we dropped is: 
+
+$$\frac{v_s^2 + v_0 v_s}{c^2} = \frac{v_s(v_s + v_0)}{c^2} = \frac{v_s \cdot v_{rel}}{c^2}$$
+
 Assuming the worst case scenario at $v_{rel}=1.2*10^4$ m/s and $v_{sat}=1.12*10^4$ m/s:
+
 $$\text{Error} \approx \frac{1.12*10^4 \times 1.2*10^4}{(3 \times 10^8)^2} \approx 1.5 \times 10^{-9}$$
+
 As an example, at 2.25 GHz, the maximum expected doppler shift in our worst case scenario with the normal formula is 87484Hz, but with our approximation it is 87487Hz. An error of 3 Hz is acceptable and negligible for this application. The error caused by relativistic effects can also be ignored as the speeds are small enough for it to not matter.
 
 ### 3. Observer and Satellite position propagation
@@ -147,10 +167,13 @@ As an example, at 2.25 GHz, the maximum expected doppler shift in our worst case
 This project gets the orbital elements from [Celestrak's API](https://celestrak.org/NORAD/elements/) as TLEs meant to be propagated using SGP4. However, propagating to every observed point is computationally expensive, especially for many targets at once. This is why a different approach was needed.
 
 This project propagates using SGP4 (using skyfield) to only one point - the observation start $t_0$. 
+
 $$ \mathbf{r}_{\text{sat}}(t_0), \mathbf{v}_{\text{sat}}(t_0) = \text{SGP4}(\text{TLE}, t_0) $$
 
 After this, the orbit is propagated using F&G functions
+
 $$ \mathbf{r}(t + \Delta t) = f \mathbf{r}(t) + g \mathbf{v}(t) $$
+
 $$ \mathbf{v}(t + \Delta t) = \dot{f} \mathbf{r}(t) + \dot{g} \mathbf{v}(t) $$
 
 where the coefficients are computed by solving Kepler's equation via Newton-Raphson iteration:
@@ -164,6 +187,7 @@ The calculation of the Observer's position is similar in approach: It calculates
 
 
 The GCRS position at time $t = t_0 + \Delta t$ is:
+
 $$ \mathbf{r}_{\text{obs}}(t) = \mathbf{R}_z(\omega_{\oplus} \Delta t) \mathbf{R}_{\text{ITRS}\to\text{GCRS}}(t_0) \mathbf{r}_{\text{ITRS}} $$
 
 where $\omega_{\oplus} = 7.2921150 \times 10^{-5}$ rad/s is Earth's rotation rate, and the observer velocity is:
@@ -188,6 +212,7 @@ For each candidate satellite passing the filters, the algorithm computes predict
 To account for unknown transmitter frequency and the transmitter and receiver clock drift, both observed and predicted frequencies are mean-centered:
 
 $$ \tilde{f}_{\text{obs},i} = f_{\text{obs},i} - \bar{f}_{\text{obs}} $$
+
 $$ \tilde{f}_{\text{pred},i} = f_{\text{pred},i} - \bar{f}_{\text{pred}} $$
 
 **RMSE Calculation:**
