@@ -136,11 +136,11 @@ $$(1 - v_s/c)^{-1} = 1 + v_s/c + (v_s/c)^2 + (v_s/c)^3 + ...$$
 
 After multiplying, expanding up to second order and grouping by order:
 
-$$\frac{f_{obs}}{f_{sat}} = (1 + v_0/c)(1 + v_s/c + (v_s/c)^2 + ...) = \\1 + v_s/c + (v_s/c)^2 + v_0/c + v_0 v_s/c^2 + ...=\\1 + \frac{v_0 + v_s}{c} + \frac{v_s^2 + v_0 v_s}{c^2} + ...$$
+$$\frac{f_{obs}}{f_{sat}} = (1 + v_0/c)(1 + v_s/c + (v_s/c)^2 + ...) = \\ 1 + v_s/c + (v_s/c)^2 + v_0/c + v_0 v_s/c^2 + ...= \\ 1 + \frac{v_0 + v_s}{c} + \frac{v_s^2 + v_0 v_s}{c^2} + ...$$
 
-We can define the relative velocity and determine that it is much less than the speed of light for earth satellite applications: $ v_{rel} = v_0+v_s << c$.
+We can define the relative velocity and determine that it is much less than the speed of light for earth satellite applications: $v_{rel} = v_0+v_s << c$.
 
-*Note: Worst case scenario relative velocity here would not exceed $1.2*10^4$ m/s (earth escape velocity + rotation at equator) compared to the speed of light at $3*10^8$ m/s*
+*Note: Worst case scenario relative velocity here would not exceed $1.2\times10^4$ m/s (earth escape velocity + rotation at equator) compared to the speed of light at $3\times10^8$ m/s*
 
 Keeping only the first two terms we get:
 
