@@ -70,8 +70,8 @@ The data you saved can be processed manually and used in the `Processing` tab.
 ### Result interpretation
 Look at the top candidates table. It shows the top 5 candidates and their RMSE (root mean squared error). It is a number that shows how much on average the predicted values differ from the observed values. The lower it is the better the match.
 
-RMSE <= 50: Perfect match, the prediction is very likely correct
-50 < RMSE <= 300: Good match, TLE may be slightly out of date. Check the epoch to confirm
+RMSE <= 50: Perfect match, the prediction is very likely correct.\
+50 < RMSE <= 300: Good match, TLE may be slightly out of date. Check the epoch to confirm.\
 RMSE > 300: Bad match, the prediction is wrong or you have not updated TLEs for a long time.
 
 
@@ -117,7 +117,7 @@ $$ f_{\text{doppler}}(t) = \frac{\omega_{\text{PLL}}(t) \cdot f_s}{2\pi} $$
 
 The signal is smoothed using a moving average filter with window size $N = 1000$ samples, then decimated to produce approximately $N$ measurements per second. These measurements are fed into a TCP Sink which enables the connection with the main application.
 
-The main application averages the data even more: It collects all the incoming data every second separates it into bins. All observations coming in at $[N-0.5, N+0.5)$, where N is an integer corresponding to a unix timestamp get averaged to eliminate most of the drift in the PLL.
+The main application averages the data even more: It collects all the incoming data every second separates it into bins. All observations coming in at $[N-0.5, N+0.5)$, where N is an integer corresponding to a unix timestamp, get averaged to eliminate most of the drift in the PLL.
 
 ### 2. Frequency to relative speed
 The classic doppler shift formula is defined as
@@ -140,7 +140,7 @@ $$\frac{f_{obs}}{f_{sat}} = (1 + v_0/c)(1 + v_s/c + (v_s/c)^2 + ...) = \\ 1 + v_
 
 We can define the relative velocity and determine that it is much less than the speed of light for earth satellite applications: $v_{rel} = v_0+v_s << c$.
 
-*Note: Worst case scenario relative velocity here would not exceed $1.2\times10^4$ m/s (earth escape velocity + rotation at equator) compared to the speed of light at $3\times10^8$ m/s*
+> Note: Worst case scenario relative velocity here would not exceed $1.2\times10^4$ m/s (earth escape velocity + rotation at equator) compared to the speed of light at $3\times10^8$ m/s
 
 Keeping only the first two terms we get:
 
@@ -156,7 +156,7 @@ The term we dropped is:
 
 $$\frac{v_s^2 + v_0 v_s}{c^2} = \frac{v_s(v_s + v_0)}{c^2} = \frac{v_s \cdot v_{rel}}{c^2}$$
 
-Assuming the worst case scenario at $v_{rel}=1.2*10^4$ m/s and $v_{sat}=1.12*10^4$ m/s:
+Assuming the worst case scenario at $v_{rel}=1.2\times10^4$ m/s and $v_{sat}=1.12\times10^4$ m/s:
 
 $$\text{Error} \approx \frac{1.12*10^4 \times 1.2*10^4}{(3 \times 10^8)^2} \approx 1.5 \times 10^{-9}$$
 
