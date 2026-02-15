@@ -50,9 +50,9 @@ def draw_settings_tab():
     with dpg.tab(label="Settings"):
 
         with dpg.collapsing_header(label="Observer Location", default_open=True):
-            dpg.add_input_float(label="Lat (deg)", tag="settings_lat", default_value=config["lat"])
-            dpg.add_input_float(label="Lon (deg)", tag="settings_lon", default_value=config["lon"])
-            dpg.add_input_float(label="Alt (m)", tag="settings_alt", default_value=config["alt"])
+            dpg.add_input_float(label="Lat (deg)", tag="settings_lat", default_value=config["lat"], format="%.5f")
+            dpg.add_input_float(label="Lon (deg)", tag="settings_lon", default_value=config["lon"], format="%.5f")
+            dpg.add_input_float(label="Alt (m)", tag="settings_alt", default_value=config["alt"], format="%.2f")
 
         with dpg.collapsing_header(label="Databases"):
             dpg.add_button(label="Update TLEs (Celestrak)", width=-1,
