@@ -324,7 +324,6 @@ def draw_live_view_tab():
             dpg.add_button(label="Connect", tag="btn_live_connect", width=-1, callback=start_live_view)
 
             dpg.add_separator()
-            dpg.add_text("Parameters")
             dpg.add_text("Central Frequency (Hz): N/A", tag="txt_center_freq")
             dpg.add_checkbox(label="Remove DC Spike", tag="chk_live_dc_spike", default_value=True)
 
@@ -365,8 +364,8 @@ def draw_live_view_tab():
                 dpg.add_plot_axis(dpg.mvXAxis, label="Time (s)", tag="live_doppler_xaxis")
                 with dpg.plot_axis(dpg.mvYAxis, label="Shift (Hz)", tag="live_doppler_yaxis"):
                     dpg.add_line_series([], [], label="Measured", tag="live_doppler_series")
-                    dpg.add_button(label="Remove last point", width=-1, callback=_live_controller.remove_last_point)
-                    dpg.add_spacer(height=5)
-                    dpg.add_button(label="Clear", width=-1, callback=_live_controller.clear_plot)
-                    dpg.add_button(label="Save Plot Data", width=-1,
-                                   callback=_live_controller.save_plot_data)
+            dpg.add_button(label="Remove last point", width=-1, callback=_live_controller.remove_last_point)
+            dpg.add_spacer(height=5)
+            dpg.add_button(label="Clear", width=-1, callback=_live_controller.clear_plot)
+            dpg.add_button(label="Save Plot Data", width=-1,
+                           callback=_live_controller.save_plot_data)
