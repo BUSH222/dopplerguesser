@@ -300,9 +300,12 @@ class LiveViewController:
                 sat, rmse = self.prediction_results[i]
                 dpg.set_value(f"prediction_sat_{i}", sat.satellite.name)
                 dpg.set_value(f"prediction_rmse_{i}", f"{rmse:.2f}")
+                norad_id = sat.satellite.model.satnum
+                dpg.set_value(f"prediction_sat_{i}_tooltip", f"NORAD ID: {norad_id}")
             else:
                 dpg.set_value(f"prediction_sat_{i}", "—")
                 dpg.set_value(f"prediction_rmse_{i}", "—")
+                dpg.set_value(f"prediction_sat_{i}_tooltip", "No data")
 
 
 _live_controller = LiveViewController()
@@ -356,6 +359,8 @@ def draw_live_view_tab():
                 for i in range(5):
                     with dpg.table_row():
                         dpg.add_text("—", tag=f"prediction_sat_{i}")
+                        with dpg.tooltip(f"prediction_sat_{i}"):
+                            dpg.add_text("No data", tag=f"prediction_sat_{i}_tooltip")
                         dpg.add_text("—", tag=f"prediction_rmse_{i}")
 
         with dpg.collapsing_header(label="Doppler Curve", default_open=True):
