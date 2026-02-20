@@ -1,8 +1,31 @@
 import numpy as np
+import re
 from dopplerguesser.misc.constants import C
 from dopplerguesser.predict.observer import Observer
 from dopplerguesser.predict.satellite import Satellite
 from dopplerguesser.misc.timetools import unix_to_skyfield
+from datetime import datetime, timezone
+
+
+def filter_debris(satellites: list[Satellite]):
+    exp = re.compile(r'\bdeb\b', re.IGNORECASE)
+    filtered = []
+    for sat in satellites:
+        name_lower = sat.name.lower()
+        if exp.search(name_lower):
+            continue
+        filtered.append(sat)
+    return filtered
+
+
+def filter_by_epoch(satellites: list[Satellite], maxage=14):
+    now = datetime.now(tz=timezone.utc)
+    filtered = []
+    for sat in satellites:
+        diff = now - sat.satellite.epoch.utc_datetime()
+        if abs(diff.days) <= maxage:
+            filtered.append(sat)
+    return filtered
 
 
 def filter_visibility(satellites: list[Satellite], observer: Observer, t, min_elevation=0.0):

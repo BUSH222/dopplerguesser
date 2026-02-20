@@ -8,13 +8,22 @@ def save_settings(sender, app_data, user_data):
     config["lat"] = round(dpg.get_value("settings_lat"), 5)
     config["lon"] = round(dpg.get_value("settings_lon"), 5)
     config["alt"] = round(dpg.get_value("settings_alt"), 2)
-    config["alive_only"] = dpg.get_value("settings_alive_only")
+    config["tle_source_celestrak"] = dpg.get_value("settings_tle_source_celestrak")
+    config["tle_source_spacetrack"] = dpg.get_value("settings_tle_source_spacetrack")
+    config["tle_source_classified"] = dpg.get_value("settings_tle_source_classified")
+    config["tle_source_from_file"] = dpg.get_value("settings_tle_source_from_file")
+    config["tle_file_path"] = dpg.get_value("settings_tle_file_path")
+    config["spacetrack_login"] = dpg.get_value("settings_spacetrack_login")
+    config["spacetrack_password"] = dpg.get_value("settings_spacetrack_password")
     config["gr_path"] = dpg.get_value("settings_gr_path")
     config["gr_tcp"] = dpg.get_value("settings_gr_tcp")
 
     config["filter_constellations"] = dpg.get_value("settings_filter_constellations")
     config["filter_constellations_list"] = dpg.get_value("settings_filter_constellations_list")
     config["filter_heo"] = dpg.get_value("settings_filter_heo")
+    config["filter_debris"] = dpg.get_value("settings_filter_debris")
+    config["filter_by_epoch"] = dpg.get_value("settings_filter_by_epoch")
+    config["max_tle_age_days"] = int(dpg.get_value("settings_max_tle_age_days"))
     config["filter_doppler"] = dpg.get_value("settings_filter_doppler")
     config["filter_doppler_threshold"] = int(dpg.get_value("settings_filter_doppler_threshold"))
     config["filter_visibility_min_elevation"] = int(dpg.get_value("settings_filter_visibility_min_elevation"))
@@ -32,7 +41,29 @@ def _update_tles_worker():
         dpg.configure_item("tles_status_text", default_value="Updating TLEs...")
         dpg.configure_item("tles_loading_indicator", show=True)
 
-        update_tles()
+        sources = []
+        if dpg.get_value("settings_tle_source_celestrak"):
+            sources.append('celestrak')
+        if dpg.get_value("settings_tle_source_spacetrack"):
+            sources.append('space-track')
+        if dpg.get_value("settings_tle_source_classified"):
+            sources.append('classified')
+        if dpg.get_value("settings_tle_source_from_file"):
+            sources.append('from_file')
+
+        space_track_credentials = None
+        login = dpg.get_value("settings_spacetrack_login")
+        password = dpg.get_value("settings_spacetrack_password")
+        if login and password:
+            space_track_credentials = {
+                'username': login,
+                'password': password
+            }
+
+        file_path = dpg.get_value("settings_tle_file_path")
+        file_path = file_path if file_path else None
+
+        update_tles(sources=sources, space_track_credentials=space_track_credentials, file_path=file_path)
     except Exception as e:
         dpg.configure_item("tles_status_text", show=True)
         dpg.configure_item("tles_status_text", default_value=f"Error updating TLEs: {e}")
@@ -55,16 +86,30 @@ def draw_settings_tab():
             dpg.add_input_float(label="Alt (m)", tag="settings_alt", default_value=config["alt"], format="%.2f")
 
         with dpg.collapsing_header(label="Databases"):
-            dpg.add_button(label="Update TLEs (Celestrak)", width=-1,
+            dpg.add_button(label="Update TLEs", width=-1,
                            callback=update_tles_callback, tag="update_tles_button")
             dpg.add_loading_indicator(tag="tles_loading_indicator", show=False, speed=10)
             dpg.add_text("", tag="tles_status_text", show=False)
-            dpg.add_button(label="Fetch SatNOGS Transmitters", width=-1, enabled=False)
 
-            dpg.add_separator()
-            dpg.add_text("SatNOGS Search Filters")
-            dpg.add_checkbox(label="Alive Satellites Only", tag="settings_alive_only",
-                             default_value=config["alive_only"])
+            dpg.add_text("TLE Sources:")
+            dpg.add_checkbox(label="Celestrak", tag="settings_tle_source_celestrak",
+                             default_value=config.get("tle_source_celestrak", True))
+            dpg.add_checkbox(label="Space-track", tag="settings_tle_source_spacetrack",
+                             default_value=config.get("tle_source_spacetrack", False))
+            dpg.add_checkbox(label="Mike McCants' Classified", tag="settings_tle_source_classified",
+                             default_value=config.get("tle_source_classified", False))
+            dpg.add_checkbox(label="From file", tag="settings_tle_source_from_file",
+                             default_value=config.get("tle_source_from_file", False))
+
+            dpg.add_text("TLE file path:")
+            dpg.add_input_text(tag="settings_tle_file_path",
+                               default_value=config.get("tle_file_path", ""), width=-1)
+            dpg.add_text("Space-track login:")
+            dpg.add_input_text(tag="settings_spacetrack_login",
+                               default_value=config.get("spacetrack_login", ""), width=-1)
+            dpg.add_text("Space-track password:")
+            dpg.add_input_text(tag="settings_spacetrack_password",
+                               default_value=config.get("spacetrack_password", ""), width=-1, password=True)
 
         with dpg.collapsing_header(label="Connections"):
             dpg.add_text("GNURadio Python Path")
@@ -78,6 +123,13 @@ def draw_settings_tab():
             dpg.add_text("Comma-separated list of constellation names.")
             dpg.add_input_text(tag="settings_filter_constellations_list",
                                default_value=config["filter_constellations_list"], width=-1)
+            dpg.add_checkbox(label="Filter debris", tag="settings_filter_debris",
+                             default_value=config.get("filter_debris", True))
+            dpg.add_checkbox(label="Filter by epoch", tag="settings_filter_by_epoch",
+                             default_value=config.get("filter_by_epoch", True))
+            dpg.add_text("Max TLE age (days):")
+            dpg.add_input_int(tag="settings_max_tle_age_days",
+                              default_value=config.get("max_tle_age_days", 30), width=-1)
             dpg.add_checkbox(label="Filter HEO satellites", tag="settings_filter_heo",
                              default_value=config["filter_heo"])
             dpg.add_checkbox(label="Filter by initial doppler shift", tag="settings_filter_doppler",

@@ -8,11 +8,14 @@ timescale = load.timescale()
 
 class Satellite:
     def __init__(self, name, tle_line1, tle_line2, ts):
-        self.name = name
+        if name.startswith('0 '):
+            self.name = name[2:]
+        else:
+            self.name = name
         self.tle_line1 = tle_line1
         self.tle_line2 = tle_line2
         self.ts = ts  # Unix timestamp
-        self.satellite = EarthSatellite(tle_line1, tle_line2, name, timescale)
+        self.satellite = EarthSatellite(tle_line1, tle_line2, self.name, timescale)
 
         # Initial skyfield state
         self.t_state = None
