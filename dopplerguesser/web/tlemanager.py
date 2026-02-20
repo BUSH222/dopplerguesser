@@ -4,8 +4,9 @@ import zipfile
 from io import BytesIO
 
 
-def update_tles(sources=['celestrak', 'space-track', 'classified'], space_track_credentials=None):
-    celestraksource, spacetracksource, classifiedsource = None, None, None
+def update_tles(sources=['celestrak', 'space-track', 'classified', 'from_file'],
+                space_track_credentials=None, file_path=None):
+    celestraksource, spacetracksource, classifiedsource, customsource = None, None, None, None
     urlcelestrak = "https://celestrak.org/NORAD/elements/gp.php?GROUP=active"
     urlst = 'https://www.space-track.org/basicspacedata/query/class/gp/format/3le/decay_date/null-val/epoch/%3Enow-14/'
     urlclassified = 'https://mmccants.org/tles/classfd.zip'
@@ -29,8 +30,13 @@ def update_tles(sources=['celestrak', 'space-track', 'classified'], space_track_
                 with z.open('classfd.tle') as f:
                     tle_data = f.read().decode("utf-8")
                     classifiedsource = tle_data.strip().split("\n")
+        if 'from_file' in sources and file_path is not None:
+            with open(file_path, "r") as f:
+                file_source = f.read().strip().split("\n")
+                if len(file_source) >= 3:
+                    customsource = file_source
         tles = {}
-        for source in [celestraksource, spacetracksource, classifiedsource]:
+        for source in [celestraksource, spacetracksource, classifiedsource, customsource]:
             if source is not None:
                 for i in range(0, len(source), 3):
                     tle = source[i:i+3]

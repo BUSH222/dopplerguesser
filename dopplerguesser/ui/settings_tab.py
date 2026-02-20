@@ -11,6 +11,8 @@ def save_settings(sender, app_data, user_data):
     config["tle_source_celestrak"] = dpg.get_value("settings_tle_source_celestrak")
     config["tle_source_spacetrack"] = dpg.get_value("settings_tle_source_spacetrack")
     config["tle_source_classified"] = dpg.get_value("settings_tle_source_classified")
+    config["tle_source_from_file"] = dpg.get_value("settings_tle_source_from_file")
+    config["tle_file_path"] = dpg.get_value("settings_tle_file_path")
     config["spacetrack_login"] = dpg.get_value("settings_spacetrack_login")
     config["spacetrack_password"] = dpg.get_value("settings_spacetrack_password")
     config["gr_path"] = dpg.get_value("settings_gr_path")
@@ -43,6 +45,8 @@ def _update_tles_worker():
             sources.append('space-track')
         if dpg.get_value("settings_tle_source_classified"):
             sources.append('classified')
+        if dpg.get_value("settings_tle_source_from_file"):
+            sources.append('from_file')
 
         space_track_credentials = None
         login = dpg.get_value("settings_spacetrack_login")
@@ -53,7 +57,10 @@ def _update_tles_worker():
                 'password': password
             }
 
-        update_tles(sources=sources, space_track_credentials=space_track_credentials)
+        file_path = dpg.get_value("settings_tle_file_path")
+        file_path = file_path if file_path else None
+
+        update_tles(sources=sources, space_track_credentials=space_track_credentials, file_path=file_path)
     except Exception as e:
         dpg.configure_item("tles_status_text", show=True)
         dpg.configure_item("tles_status_text", default_value=f"Error updating TLEs: {e}")
@@ -88,7 +95,12 @@ def draw_settings_tab():
                              default_value=config.get("tle_source_spacetrack", False))
             dpg.add_checkbox(label="Mike McCants' Classified", tag="settings_tle_source_classified",
                              default_value=config.get("tle_source_classified", False))
+            dpg.add_checkbox(label="From file", tag="settings_tle_source_from_file",
+                             default_value=config.get("tle_source_from_file", False))
 
+            dpg.add_text("TLE file path:")
+            dpg.add_input_text(tag="settings_tle_file_path",
+                               default_value=config.get("tle_file_path", ""), width=-1)
             dpg.add_text("Space-track login:")
             dpg.add_input_text(tag="settings_spacetrack_login",
                                default_value=config.get("spacetrack_login", ""), width=-1)
