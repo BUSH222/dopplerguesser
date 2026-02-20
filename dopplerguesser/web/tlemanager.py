@@ -35,14 +35,20 @@ def update_tles(sources=['celestrak', 'space-track', 'classified'], space_track_
                 for i in range(0, len(source), 3):
                     tle = source[i:i+3]
                     if len(tle) == 3:
-                        norad_cat_id = tle[1][2:7]
+                        norad_cat_id = tle[1][2:7].strip().lstrip('0') or '0'
                         if norad_cat_id not in tles:
                             tles[norad_cat_id] = tle
                         else:
-                            epoch = tle[2][18:32]
-                            existing_epoch = tles[norad_cat_id][2][18:32]
-                            if epoch > existing_epoch:
-                                tles[norad_cat_id] = tle
+                            epoch_str = tle[1][18:32].replace(' ', '')
+                            existing_epoch_str = tles[norad_cat_id][1][18:32].replace(' ', '')
+                            try:
+                                epoch = float(epoch_str)
+                                existing_epoch = float(existing_epoch_str)
+                                if epoch > existing_epoch:
+                                    tles[norad_cat_id] = tle
+                            except ValueError:
+                                if epoch_str > existing_epoch_str:
+                                    tles[norad_cat_id] = tle
         tle_file_path = os.path.join(os.path.dirname(__file__), "tles.txt")
         with open(tle_file_path, "w") as f:
             for tle in tles.values():
