@@ -21,6 +21,9 @@ def save_settings(sender, app_data, user_data):
     config["filter_constellations"] = dpg.get_value("settings_filter_constellations")
     config["filter_constellations_list"] = dpg.get_value("settings_filter_constellations_list")
     config["filter_heo"] = dpg.get_value("settings_filter_heo")
+    config["filter_debris"] = dpg.get_value("settings_filter_debris")
+    config["filter_by_epoch"] = dpg.get_value("settings_filter_by_epoch")
+    config["max_tle_age_days"] = int(dpg.get_value("settings_max_tle_age_days"))
     config["filter_doppler"] = dpg.get_value("settings_filter_doppler")
     config["filter_doppler_threshold"] = int(dpg.get_value("settings_filter_doppler_threshold"))
     config["filter_visibility_min_elevation"] = int(dpg.get_value("settings_filter_visibility_min_elevation"))
@@ -120,6 +123,13 @@ def draw_settings_tab():
             dpg.add_text("Comma-separated list of constellation names.")
             dpg.add_input_text(tag="settings_filter_constellations_list",
                                default_value=config["filter_constellations_list"], width=-1)
+            dpg.add_checkbox(label="Filter debris", tag="settings_filter_debris",
+                             default_value=config.get("filter_debris", True))
+            dpg.add_checkbox(label="Filter by epoch", tag="settings_filter_by_epoch",
+                             default_value=config.get("filter_by_epoch", True))
+            dpg.add_text("Max TLE age (days):")
+            dpg.add_input_int(tag="settings_max_tle_age_days",
+                              default_value=config.get("max_tle_age_days", 30), width=-1)
             dpg.add_checkbox(label="Filter HEO satellites", tag="settings_filter_heo",
                              default_value=config["filter_heo"])
             dpg.add_checkbox(label="Filter by initial doppler shift", tag="settings_filter_doppler",

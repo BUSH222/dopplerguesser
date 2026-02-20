@@ -11,7 +11,7 @@ from dopplerguesser.config import config
 from dopplerguesser.predict.fetch_tles import fetch_tles
 from dopplerguesser.predict.filters import (
     filter_visibility, filter_heo, filter_geostationary,
-    filter_by_doppler, filter_constellations
+    filter_by_doppler, filter_constellations, filter_debris, filter_by_epoch
 )
 from dopplerguesser.predict.matcher import score_candidates
 from dopplerguesser.predict.observer import Observer
@@ -176,6 +176,16 @@ class LiveViewController:
 
             # Filtering
             print(f"Initial candidates: {len(satellites)}")
+
+            # Debris filter
+            if config["filter_debris"]:
+                satellites = filter_debris(satellites)
+                print(f"After debris filter: {len(satellites)}")
+
+            # Epoch filter
+            if config["filter_by_epoch"] and config["max_tle_age_days"] > 0:
+                satellites = filter_by_epoch(satellites, maxage=config["max_tle_age_days"])
+                print(f"After epoch filter: {len(satellites)}")
 
             # Constellation filter
             if config["filter_constellations"]:
