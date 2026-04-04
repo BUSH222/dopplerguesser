@@ -9,6 +9,7 @@ def save_settings(sender, app_data, user_data):
     config["lon"] = round(dpg.get_value("settings_lon"), 5)
     config["alt"] = round(dpg.get_value("settings_alt"), 2)
     config["tle_source_celestrak"] = dpg.get_value("settings_tle_source_celestrak")
+    config["tle_source_retlector"] = dpg.get_value("settings_tle_source_retlector")
     config["tle_source_spacetrack"] = dpg.get_value("settings_tle_source_spacetrack")
     config["tle_source_classified"] = dpg.get_value("settings_tle_source_classified")
     config["tle_source_from_file"] = dpg.get_value("settings_tle_source_from_file")
@@ -93,7 +94,9 @@ def draw_settings_tab():
 
             dpg.add_text("TLE Sources:")
             dpg.add_checkbox(label="Celestrak", tag="settings_tle_source_celestrak",
-                             default_value=config.get("tle_source_celestrak", True))
+                             default_value=config.get("tle_source_celestrak", False))
+            dpg.add_checkbox(label="Retlector (Celestrak mirror)", tag="settings_tle_source_retlector",
+                             default_value=config.get("tle_source_retlector", True))
             dpg.add_checkbox(label="Space-track", tag="settings_tle_source_spacetrack",
                              default_value=config.get("tle_source_spacetrack", False))
             dpg.add_checkbox(label="Mike McCants' Classified", tag="settings_tle_source_classified",
