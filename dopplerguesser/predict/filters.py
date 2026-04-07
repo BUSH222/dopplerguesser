@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 
 
 def filter_debris(satellites: list[Satellite]):
-    exp = re.compile(r'\bdeb\b', re.IGNORECASE)
+    exp = re.compile(r'\b(?:deb|r/?b)\b', re.IGNORECASE)
     filtered = []
     for sat in satellites:
         name_lower = sat.name.lower()

@@ -45,6 +45,8 @@ def _update_tles_worker():
         sources = []
         if dpg.get_value("settings_tle_source_celestrak"):
             sources.append('celestrak')
+        if dpg.get_value("settings_tle_source_retlector"):
+            sources.append('retlector')
         if dpg.get_value("settings_tle_source_spacetrack"):
             sources.append('space-track')
         if dpg.get_value("settings_tle_source_classified"):
