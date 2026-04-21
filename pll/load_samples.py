@@ -1,27 +1,77 @@
 import numpy as np
 import socket
+import threading
+import queue
 
 
-def receive_samples(handler, host='localhost', port=12345, chunk_size=2**15):
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.connect((host, port))
-        buffer = bytearray()
+def receive_samples(handler, host='localhost', port=12345, chunk_size_bytes=2**17, num_buffers=8):
+    """
+    Multithreaded receiver with pre-allocated ring buffers.
+    `chunk_size_bytes` determines how many bytes to read before invoking the handler.
+    """
+
+    chunk_size_bytes = (chunk_size_bytes // 4) * 4
+
+    free_queue = queue.Queue(maxsize=num_buffers)
+    ready_queue = queue.Queue(maxsize=num_buffers)
+
+    for _ in range(num_buffers):
+        free_queue.put(bytearray(chunk_size_bytes))
+
+    def producer():
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect((host, port))
+            while True:
+                try:
+                    buf = free_queue.get(timeout=1.0)
+                except queue.Empty:
+                    continue
+                view = memoryview(buf)
+                bytes_received = 0
+
+                while bytes_received < chunk_size_bytes:
+                    try:
+                        n = s.recv_into(view[bytes_received:])
+                        if not n:
+                            break
+                        bytes_received += n
+                    except Exception:
+                        break
+
+                if bytes_received == 0:
+                    ready_queue.put(None)
+                    break
+
+                ready_queue.put((buf, bytes_received))
+
+                if bytes_received < chunk_size_bytes:
+                    ready_queue.put(None)  # Signal EOF
+                    break
+
+    t = threading.Thread(target=producer, daemon=True)
+    t.start()
+
+    try:
         while True:
-            data = s.recv(chunk_size)
-            if not data:
+            item = ready_queue.get()
+            if item is None:
                 break
-            buffer.extend(data)
 
-            bytes_to_process = (len(buffer) // 4) * 4
-            if bytes_to_process > 0:
-                raw_bytes = buffer[:bytes_to_process]
-                del buffer[:bytes_to_process]
+            buf, bytes_valid = item
 
+            samples_valid = bytes_valid // 4
+            if samples_valid > 0:
+                raw_bytes = memoryview(buf)[:samples_valid * 4]
                 raw = np.frombuffer(raw_bytes, dtype=np.int16)
                 iq = raw.astype(np.float32)
                 complex_samples = (iq[0::2] + 1j * iq[1::2]) / 32768.0
 
                 handler(complex_samples)
+
+            free_queue.put(buf)
+
+    except KeyboardInterrupt:
+        pass
 
 
 def load_samples_from_file(file_path, handler, chunk_size=1024):

@@ -36,13 +36,13 @@ run_dpll_loop(py::array_t<std::complex<float>> samples,
     for (int i = 0; i < N; ++i) {
         std::complex<float> x = x_ptr[i];
 
-        // 1. NCO
-        std::complex<float> nco_val(std::cos(nco_theta), std::sin(nco_theta));
+        // 1. Phase detector
+        float phi_e = std::arg(x) - nco_theta;
+        while (phi_e > M_PI) phi_e -= twopi;
+        while (phi_e < -M_PI) phi_e += twopi;
 
-        // 2. Phase detector
-        std::complex<float> nco_conj(nco_val.real(), -nco_val.imag());
-        std::complex<float> pd_val = x * nco_conj;
-        float phi_e = std::arg(pd_val);
+        // 2. NCO val (to output)
+        std::complex<float> nco_val(std::cos(nco_theta), std::sin(nco_theta));
 
         // 3. Loop filter
         lf_integrator += K2 * phi_e;
@@ -50,16 +50,16 @@ run_dpll_loop(py::array_t<std::complex<float>> samples,
 
         // 4. Clamp and advance NCO
         float v_clamped = std::max(-dphi_max, std::min(dphi_max, v));
-        nco_theta = std::fmod(nco_theta + dphi0 + v_clamped, twopi);
-        if (nco_theta > M_PI) nco_theta -= twopi;
-        if (nco_theta < -M_PI) nco_theta += twopi;
+        nco_theta += dphi0 + v_clamped;
+        while (nco_theta > M_PI) nco_theta -= twopi;
+        while (nco_theta < -M_PI) nco_theta += twopi;
 
         // 5. Frequency estimate
         float f_est = f_center + lf_integrator * f_s / twopi;
 
         // 6. Lock detection
         sigma2 = beta * sigma2 + (1.0f - beta) * (phi_e * phi_e);
-        float p_lock = std::exp(-sigma2 / LOCK_THRESH);
+        float p_lock = sigma2;
 
         err_ptr[i] = phi_e;
         fest_ptr[i] = f_est;

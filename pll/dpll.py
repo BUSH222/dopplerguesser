@@ -49,7 +49,7 @@ class DPLL:
 
     def run(self, samples: np.ndarray) -> dict:
         """Process a block of complex samples. Returns arrays of outputs."""
-        errors, f_ests, p_locks, sigma2s, nco_vals, nco_theta, lf_int, sigma2_out = run_dpll_loop(
+        errors, f_ests, sigma2s_raw, sigma2s, nco_vals, nco_theta, lf_int, sigma2_out = run_dpll_loop(
             samples.astype(np.complex64),
             self.nco.theta,
             self.nco.dphi0,
@@ -63,6 +63,8 @@ class DPLL:
             self._sigma2,
             self._LOCK_THRESH
         )
+
+        p_locks = np.exp(-sigma2s_raw / self._LOCK_THRESH)
 
         self.nco.theta = nco_theta
         self.loop_filter.integrator = lf_int
