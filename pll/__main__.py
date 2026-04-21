@@ -2,15 +2,18 @@ from .dpll import DPLL
 from .load_samples import receive_samples
 from dopplerguesser.misc.rigctl_query import query_rigctl  # return frequency, bandwidth
 import time
+import numpy as np
 
 
 class DPLLReceiver:
     def __init__(self, f_s):
         self.f_s = f_s
-        self.dpll = DPLL(f_s=f_s, bw_hz=10000.0, f_max=f_s / 2.0)
+        self.dpll = DPLL(f_s=f_s, bw_hz=5000, f_max=60e3)
         self.samplecount = 0
         self.starttime = None
-        self.last_state = None
+        self.accumulated_f_est = []
+        self.accumulated_p_lock = []
+        self.accumulated_error = []
 
     def handler(self, samples):
         if not self.starttime:
@@ -18,11 +21,9 @@ class DPLLReceiver:
 
         out = self.dpll.run(samples)
         if len(samples) > 0:
-            self.last_state = {
-                'f_est': out['f_est'][-1],
-                'p_lock': out['p_lock'][-1],
-                'error': out['error'][-1]
-            }
+            self.accumulated_f_est.extend(out['f_est'])
+            self.accumulated_p_lock.extend(out['p_lock'])
+            self.accumulated_error.extend(out['error'])
 
         self.samplecount += len(samples)
 
@@ -30,13 +31,19 @@ class DPLLReceiver:
             self.print_state()
             self.starttime = time.time()
             self.samplecount = 0
+            self.accumulated_f_est = []
+            self.accumulated_p_lock = []
+            self.accumulated_error = []
 
     def print_state(self):
-        if self.last_state:
+        if self.accumulated_f_est:
+            avg_f_est = np.mean(self.accumulated_f_est)
+            avg_p_lock = np.mean(self.accumulated_p_lock)
+            avg_error = np.mean(self.accumulated_error)
             print(f"[{self.samplecount} sps] "
-                  f"f_est: {self.last_state['f_est']:>8.2f} Hz | "
-                  f"p_lock: {self.last_state['p_lock']:>5.3f} | "
-                  f"error: {self.last_state['error']:>6.3f} rad")
+                  f"f_est (avg): {avg_f_est:>8.2f} Hz | "
+                  f"p_lock (avg): {avg_p_lock:>5.3f} | "
+                  f"error (avg): {avg_error:>6.3f} rad")
         else:
             print(f"Received {self.samplecount} samples")
 

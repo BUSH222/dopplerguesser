@@ -46,6 +46,7 @@ run_dpll_loop(py::array_t<std::complex<float>> samples,
 
         // 3. Loop filter
         lf_integrator += K2 * phi_e;
+        lf_integrator = std::max(-dphi_max, std::min(dphi_max, lf_integrator));
         float v = K1 * phi_e + lf_integrator;
 
         // 4. Clamp and advance NCO
