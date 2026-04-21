@@ -1,8 +1,14 @@
-from .estimate_frequency import estimated_frequency
 from .loop_filter import LoopFilter
 from .numerically_controlled_oscillator import NCO
-from .phase_detector import phase_detector
 import numpy as np
+
+try:
+    from ._dpll_ext import run_dpll_loop  # type: ignore
+    HAS_EXT = True
+except ImportError:
+    HAS_EXT = False
+
+assert HAS_EXT
 
 
 class DPLL:
@@ -41,42 +47,31 @@ class DPLL:
         self.run(samples)
         # self.output_buffer.append(out)
 
-    def step(self, x: complex) -> dict:
-        # 1. NCO
-        nco_val = np.exp(1j * self.nco.theta)
-
-        # 2. Phase detector
-        phi_e = phase_detector(x, nco_val)
-
-        # 3. Loop filter
-        v = self.loop_filter.step(phi_e)
-
-        # 4. Clamp and advance NCO
-        self.nco.step(v)
-
-        # 5. Frequency estimate
-        f_est = estimated_frequency(self.f_center, self.loop_filter.integrator, self.f_s)
-
-        # 6. Lock detection
-        self._sigma2 = self._beta * self._sigma2 + (1 - self._beta) * phi_e ** 2
-        p_lock = float(np.exp(-self._sigma2 / self._LOCK_THRESH))
-
-        return {
-            'nco': nco_val,
-            'error': phi_e,
-            'f_est': f_est,
-            'p_lock': p_lock,
-            'sigma2': self._sigma2,
-        }
-
     def run(self, samples: np.ndarray) -> dict:
         """Process a block of complex samples. Returns arrays of outputs."""
-        N = len(samples)
-        out = {k: np.zeros(N, dtype=np.float32) for k in ('error', 'f_est', 'p_lock', 'sigma2')}
-        out['nco'] = np.zeros(N, dtype=np.complex64)
+        errors, f_ests, p_locks, sigma2s, nco_vals, nco_theta, lf_int, sigma2_out = run_dpll_loop(
+            samples.astype(np.complex64),
+            self.nco.theta,
+            self.nco.dphi0,
+            self.nco.dphi_max,
+            self.loop_filter.integrator,
+            self.loop_filter.K1,
+            self.loop_filter.K2,
+            self.f_s,
+            self.f_center,
+            self._beta,
+            self._sigma2,
+            self._LOCK_THRESH
+        )
 
-        for i, x in enumerate(samples):
-            r = self.step(x)
-            for k in out:
-                out[k][i] = r[k]
-        return out
+        self.nco.theta = nco_theta
+        self.loop_filter.integrator = lf_int
+        self._sigma2 = sigma2_out
+
+        return {
+            'error': errors,
+            'f_est': f_ests,
+            'p_lock': p_locks,
+            'sigma2': sigma2s,
+            'nco': nco_vals,
+        }

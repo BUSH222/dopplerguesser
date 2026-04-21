@@ -8,7 +8,3 @@ class LoopFilter:
         omega_n = bw_hz / (zeta + 1.0 / (4.0 * zeta))
         self.K1 = 2.0 * zeta * omega_n * T
         self.K2 = (omega_n * T) ** 2
-
-    def step(self, phase_error: float) -> float:
-        self.integrator += self.K2 * phase_error
-        return self.K1 * phase_error + self.integrator

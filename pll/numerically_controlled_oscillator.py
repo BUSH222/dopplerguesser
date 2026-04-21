@@ -11,15 +11,6 @@ class NCO:
     def update_limits(self, f_max: float):
         self.dphi_max = 2 * np.pi * f_max / self.f_s
 
-    def step(self, correction: float) -> complex:
-        v_clamped = np.clip(correction, -self.dphi_max, self.dphi_max)
-        self.theta = (self.theta + self.dphi0 + v_clamped) % (2 * np.pi)
-
-        if self.theta > np.pi:
-            self.theta -= 2 * np.pi
-
-        return np.exp(1j * self.theta)
-
     @property
     def frequency(self) -> float:
         return self.theta / (2 * np.pi) * self.f_s
