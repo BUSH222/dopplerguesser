@@ -5,11 +5,6 @@ import queue
 
 
 def receive_samples(handler, host='localhost', port=12345, chunk_size_bytes=2**17, num_buffers=8):
-    """
-    Multithreaded receiver with pre-allocated ring buffers.
-    `chunk_size_bytes` determines how many bytes to read before invoking the handler.
-    """
-
     chunk_size_bytes = (chunk_size_bytes // 4) * 4
 
     free_queue = queue.Queue(maxsize=num_buffers)
@@ -63,8 +58,8 @@ def receive_samples(handler, host='localhost', port=12345, chunk_size_bytes=2**1
             if samples_valid > 0:
                 raw_bytes = memoryview(buf)[:samples_valid * 4]
                 raw = np.frombuffer(raw_bytes, dtype=np.int16)
-                iq = raw.astype(np.float32)
-                complex_samples = (iq[0::2] + 1j * iq[1::2]) / 32768.0
+                complex_samples = raw.astype(np.float32).view(np.complex64)
+                complex_samples /= 32768.0
 
                 handler(complex_samples)
 
@@ -83,7 +78,7 @@ def load_samples_from_file(file_path, handler, chunk_size=1024):
                 break
 
             raw = np.frombuffer(raw_bytes, dtype=np.int16)
-            iq = raw.astype(np.float32)
-            complex_samples = (iq[0::2] + 1j * iq[1::2]) / 32768.0
+            complex_samples = raw.astype(np.float32).view(np.complex64)
+            complex_samples /= 32768.0
 
             handler(complex_samples)

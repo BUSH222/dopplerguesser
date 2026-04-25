@@ -8,7 +8,7 @@ import numpy as np
 class DPLLReceiver:
     def __init__(self, f_s):
         self.f_s = f_s
-        self.dpll = DPLL(f_s=f_s, bw_hz=5000, f_max=60e3)
+        self.dpll = DPLL(f_s=f_s, bw_hz=1000, f_max=120e3)
         self.samplecount = 0
         self.starttime = None
         self.accumulated_f_est = []
@@ -50,7 +50,7 @@ class DPLLReceiver:
 
 if __name__ == "__main__":
     freq, bw = query_rigctl()
-    f_s = float(bw)  # Bandwidth acts as sample rate
+    f_s = float(bw)
 
     print(f"Initialized DPLL Receiver with sample rate: {f_s} Hz")
     receiver = DPLLReceiver(f_s=f_s)

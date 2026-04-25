@@ -50,7 +50,7 @@ class DPLL:
     def run(self, samples: np.ndarray) -> dict:
         """Process a block of complex samples. Returns arrays of outputs."""
         errors, f_ests, sigma2s_raw, sigma2s, nco_vals, nco_theta, lf_int, sigma2_out = run_dpll_loop(
-            samples.astype(np.complex64),
+            samples,
             self.nco.theta,
             self.nco.dphi0,
             self.nco.dphi_max,
