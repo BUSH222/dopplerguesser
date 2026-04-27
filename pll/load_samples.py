@@ -4,8 +4,15 @@ import threading
 import queue
 
 
-def receive_samples(handler, host='localhost', port=12345, chunk_size_bytes=2**17, num_buffers=8):
-    chunk_size_bytes = (chunk_size_bytes // 4) * 4
+def receive_samples(handler, host='localhost', port=12345,
+                    chunk_size_bytes=2**17, num_buffers=8, sample_format='cs16'):
+    assert sample_format in ['cs16', 'cf32'], "Unsupported sample format"
+    if sample_format == 'cs16':
+        chunk_size_bytes = (chunk_size_bytes // 4) * 4
+        bytes_per_sample = 4
+    elif sample_format == 'cf32':
+        chunk_size_bytes = (chunk_size_bytes // 8) * 8
+        bytes_per_sample = 8
 
     free_queue = queue.Queue(maxsize=num_buffers)
     ready_queue = queue.Queue(maxsize=num_buffers)
@@ -54,12 +61,16 @@ def receive_samples(handler, host='localhost', port=12345, chunk_size_bytes=2**1
 
             buf, bytes_valid = item
 
-            samples_valid = bytes_valid // 4
+            samples_valid = bytes_valid // bytes_per_sample
             if samples_valid > 0:
-                raw_bytes = memoryview(buf)[:samples_valid * 4]
-                raw = np.frombuffer(raw_bytes, dtype=np.int16)
-                complex_samples = raw.astype(np.float32).view(np.complex64)
-                complex_samples /= 32768.0
+                raw_bytes = memoryview(buf)[:samples_valid * bytes_per_sample]
+
+                if sample_format == 'cs16':
+                    raw = np.frombuffer(raw_bytes, dtype=np.int16)
+                    complex_samples = raw.astype(np.float32).view(np.complex64)
+                    complex_samples /= 32768.0
+                else:  # cf32
+                    complex_samples = np.frombuffer(raw_bytes, dtype=np.complex64)
 
                 handler(complex_samples)
 
@@ -69,11 +80,11 @@ def receive_samples(handler, host='localhost', port=12345, chunk_size_bytes=2**1
         pass
 
 
-def load_samples_from_file(file_path, handler, chunk_size=1024):
+def load_samples_from_file(file_path, handler, chunk_size_bytes=2**17, num_buffers=8, sample_format='cs16', sample_rate=192000):
     # cs16 only for now
     with open(file_path, 'rb') as f:
         while True:
-            raw_bytes = f.read(chunk_size * 4)
+            raw_bytes = f.read(chunk_size_bytes)
             if not raw_bytes:
                 break
 

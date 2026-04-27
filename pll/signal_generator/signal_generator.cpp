@@ -14,7 +14,7 @@
 
 std::atomic<double> current_f_s(10000.0);
 std::atomic<float> current_w_s(0.02f);
-std::atomic<double> current_samp_rate(1000000.0);
+std::atomic<double> current_samp_rate(192000.0);
 std::atomic<bool> restart_connection(false);
 std::atomic<bool> trigger_sweep(false);
 std::atomic<bool> stop_sweep(false);

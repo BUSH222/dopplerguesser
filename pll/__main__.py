@@ -3,12 +3,13 @@ from .load_samples import receive_samples
 from dopplerguesser.misc.rigctl_query import query_rigctl  # return frequency, bandwidth
 import time
 import numpy as np
+import argparse
 
 
 class DPLLReceiver:
-    def __init__(self, f_s):
+    def __init__(self, f_s, bw_hz=1000):
         self.f_s = f_s
-        self.dpll = DPLL(f_s=f_s, bw_hz=1000, f_max=120e3)
+        self.dpll = DPLL(f_s=f_s, bw_hz=bw_hz, f_max=120e3)
         self.samplecount = 0
         self.starttime = None
         self.accumulated_f_est = []
@@ -49,11 +50,19 @@ class DPLLReceiver:
 
 
 if __name__ == "__main__":
-    freq, bw = query_rigctl()
-    f_s = float(bw)
+    parser = argparse.ArgumentParser(description="Run DPLL Receiver.")
+    parser.add_argument("--bw", type=float, default=1000, help="PLL Bandwidth in Hz")
+    parser.add_argument("--sample_rate", type=float, help="Sample rate")
+    args = parser.parse_args()
+    if args.sample_rate:
+        f_s = args.sample_rate
+        bw = f_s
+    else:
+        freq, bw = query_rigctl()
+        f_s = float(bw)
 
     print(f"Initialized DPLL Receiver with sample rate: {f_s} Hz")
-    receiver = DPLLReceiver(f_s=f_s)
+    receiver = DPLLReceiver(f_s=f_s, bw_hz=args.bw)
 
     # Blocks and receives
-    receive_samples(receiver.handler)
+    receive_samples(receiver.handler, port=1234, sample_format='cf32')
