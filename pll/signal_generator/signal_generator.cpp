@@ -17,6 +17,8 @@ std::atomic<float> current_w_s(0.02f);
 std::atomic<double> current_samp_rate(192000.0);
 std::atomic<bool> restart_connection(false);
 std::atomic<bool> trigger_sweep(false);
+std::atomic<bool> trigger_linear(false);
+std::atomic<double> linear_speed(0.0);
 std::atomic<bool> stop_sweep(false);
 
 void input_thread() {
@@ -49,6 +51,15 @@ void input_thread() {
         } else if (command == "sweep") {
             trigger_sweep.store(true);
             std::cout << "Sweep triggered." << std::endl;
+        } else if (command == "linear") {
+            double speed;
+            if (iss >> speed) {
+                linear_speed.store(speed);
+                trigger_linear.store(true);
+                std::cout << "Linear sweep triggered with speed " << speed << " Hz/s." << std::endl;
+            } else {
+                std::cout << "Error: Linear sweep requires a speed parameter." << std::endl;
+            }
         } else if (command == "stop") {
             stop_sweep.store(true);
             std::cout << "Sweep stop triggered." << std::endl;
@@ -113,7 +124,10 @@ int main() {
 
         double current_phase = 0.0;
         bool is_sweeping = false;
+        bool is_linear = false;
         double sweep_t = 0.0;
+        double linear_t = 0.0;
+        double current_linear_speed = 0.0;
         restart_connection.store(false);
 
         auto time_start = std::chrono::steady_clock::now();
@@ -127,11 +141,20 @@ int main() {
             // Check triggers
             if (trigger_sweep.load()) {
                 is_sweeping = true;
+                is_linear = false;
                 sweep_t = 0.0;
                 trigger_sweep.store(false);
             }
+            if (trigger_linear.load()) {
+                is_linear = true;
+                is_sweeping = false;
+                linear_t = 0.0;
+                current_linear_speed = linear_speed.load();
+                trigger_linear.store(false);
+            }
             if (stop_sweep.load()) {
                 is_sweeping = false;
+                is_linear = false;
                 stop_sweep.store(false);
             }
 
@@ -144,6 +167,9 @@ int main() {
                         is_sweeping = false;
                         std::cout << "Sweep finished (600 seconds reached)." << std::endl;
                     }
+                } else if (is_linear) {
+                    freq = -current_linear_speed * linear_t;
+                    linear_t += dt;
                 } else {
                     freq = current_f_s.load();
                 }

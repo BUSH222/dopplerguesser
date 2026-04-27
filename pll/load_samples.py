@@ -80,7 +80,8 @@ def receive_samples(handler, host='localhost', port=12345,
         pass
 
 
-def load_samples_from_file(file_path, handler, chunk_size_bytes=2**17, num_buffers=8, sample_format='cs16', sample_rate=192000):
+def load_samples_from_file(file_path, handler, chunk_size_bytes=2**17,
+                           num_buffers=8, sample_format='cs16', sample_rate=192000):
     # cs16 only for now
     with open(file_path, 'rb') as f:
         while True:
