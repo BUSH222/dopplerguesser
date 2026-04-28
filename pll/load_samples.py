@@ -5,7 +5,7 @@ import queue
 
 
 def receive_samples(handler, host='localhost', port=12345,
-                    chunk_size_bytes=2**17, num_buffers=8, sample_format='cs16'):
+                    chunk_size_bytes=2**17, num_buffers=8, sample_format='cs16', stop_event=None):
     assert sample_format in ['cs16', 'cf32'], "Unsupported sample format"
     if sample_format == 'cs16':
         chunk_size_bytes = (chunk_size_bytes // 4) * 4
@@ -24,6 +24,9 @@ def receive_samples(handler, host='localhost', port=12345,
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((host, port))
             while True:
+                if stop_event and stop_event.is_set():
+                    ready_queue.put(None)
+                    break
                 try:
                     buf = free_queue.get(timeout=1.0)
                 except queue.Empty:
@@ -32,6 +35,8 @@ def receive_samples(handler, host='localhost', port=12345,
                 bytes_received = 0
 
                 while bytes_received < chunk_size_bytes:
+                    if stop_event and stop_event.is_set():
+                        break
                     try:
                         n = s.recv_into(view[bytes_received:])
                         if not n:
@@ -55,7 +60,12 @@ def receive_samples(handler, host='localhost', port=12345,
 
     try:
         while True:
-            item = ready_queue.get()
+            if stop_event and stop_event.is_set():
+                break
+            try:
+                item = ready_queue.get(timeout=0.5)
+            except queue.Empty:
+                continue
             if item is None:
                 break
 

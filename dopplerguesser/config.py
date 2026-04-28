@@ -1,6 +1,5 @@
 import json
 import os
-from dopplerguesser.misc.get_username import get_username
 
 
 class ConfigManager:
@@ -11,8 +10,6 @@ class ConfigManager:
         "lon": 0.0,
         "alt": 0.0,
         "alive_only": True,
-        "gr_path": f"/Users/{get_username()}/radioconda/bin/python",
-        "gr_tcp": "localhost:12346",
         "debug_tab": False,
         "filter_constellations": True,
         "filter_constellations_list": "starlink,oneweb",
