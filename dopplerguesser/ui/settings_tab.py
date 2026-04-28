@@ -16,8 +16,6 @@ def save_settings(sender, app_data, user_data):
     config["tle_file_path"] = dpg.get_value("settings_tle_file_path")
     config["spacetrack_login"] = dpg.get_value("settings_spacetrack_login")
     config["spacetrack_password"] = dpg.get_value("settings_spacetrack_password")
-    config["gr_path"] = dpg.get_value("settings_gr_path")
-    config["gr_tcp"] = dpg.get_value("settings_gr_tcp")
 
     config["filter_constellations"] = dpg.get_value("settings_filter_constellations")
     config["filter_constellations_list"] = dpg.get_value("settings_filter_constellations_list")
@@ -115,12 +113,6 @@ def draw_settings_tab():
             dpg.add_text("Space-track password:")
             dpg.add_input_text(tag="settings_spacetrack_password",
                                default_value=config.get("spacetrack_password", ""), width=-1, password=True)
-
-        with dpg.collapsing_header(label="Connections"):
-            dpg.add_text("GNURadio Python Path")
-            dpg.add_input_text(tag="settings_gr_path", default_value=config["gr_path"], width=-1)
-            dpg.add_text("GNURadio TCP Server URL")
-            dpg.add_input_text(tag="settings_gr_tcp", default_value=config["gr_tcp"], width=-1)
 
         with dpg.collapsing_header(label="Filters"):
             dpg.add_checkbox(label="Filter satellite constellations", tag="settings_filter_constellations",

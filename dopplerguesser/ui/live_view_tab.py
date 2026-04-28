@@ -1,9 +1,8 @@
 import dearpygui.dearpygui as dpg
-import os
 import threading
 import time
 from datetime import datetime
-from dopplerguesser.script_control.runner import FlowgraphRunner
+from dopplerguesser.script_control.runner import DPLLRunner
 from dopplerguesser.misc.rigctl_query import query_rigctl
 from dopplerguesser.misc.constants import C
 from dopplerguesser.config import config
@@ -37,8 +36,6 @@ class LiveViewController:
         if self.running:
             return
 
-        correct_iq = dpg.get_value("chk_live_dc_spike")
-
         try:
             freq, sr = query_rigctl()
             self.center_freq = freq
@@ -51,11 +48,10 @@ class LiveViewController:
 
         params = {
             "s": sample_rate,
-            "d": int(correct_iq)
+            "sample_format": "cs16"
         }
 
-        script_path = os.path.abspath(os.path.join("gr_scripts", "pll_estimator.py"))
-        self.runner = FlowgraphRunner(script_path, port=12346, params=params)
+        self.runner = DPLLRunner(port=12345, params=params)
         self.plot_x = []
         self.plot_y = []
         dpg.configure_item("live_doppler_series", x=[], y=[])
@@ -328,7 +324,6 @@ def draw_live_view_tab():
 
             dpg.add_separator()
             dpg.add_text("Central Frequency (Hz): N/A", tag="txt_center_freq")
-            dpg.add_checkbox(label="Remove DC Spike", tag="chk_live_dc_spike", default_value=True)
 
             dpg.add_spacer(height=5)
             dpg.add_text("Live Readings:")
