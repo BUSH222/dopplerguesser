@@ -142,9 +142,21 @@ def draw_settings_tab():
             dpg.add_text("Propagation cache duration (s):")
             dpg.add_input_int(tag="settings_propagation_cache_duration",
                               default_value=config["propagation_cache_duration"])
-            dpg.add_text("PLL thresholds:")
-            dpg.add_text('soon')
-
+            dpg.add_text("PLL:")
+            dpg.add_text("PLL bandwidth options (Hz), separated by comma:")
+            dpg.add_input_text(tag="settings_pll_bandwidths",
+                               default_value=config["pll_bandwidths"], width=-1)
+            dpg.add_text("PLL max frequency multiplier:", tag="settings_pll_max_frequency_multiplier_label")
+            dpg.add_input_int(tag="settings_pll_max_frequency_multiplier",
+                              default_value=config["pll_max_frequency_multiplier"])
+            with dpg.tooltip("settings_pll_max_frequency_multiplier_label"):
+                dpg.add_text("For any frequency f, \nthe max frequency offset is f_tx*2.6*10^-5.\n\
+To account for clock offsets \nand imprecise tuning, this multiplier\n\
+allows you to set a higher threshold \nfor the PLL to successfully lock.\n\
+Default is 2")
+            dpg.add_text("PLL zeta (damping factor):")
+            dpg.add_input_float(tag="settings_pll_zeta",
+                                default_value=config["pll_zeta"])
         with dpg.collapsing_header(label="Misc"):
             dpg.add_checkbox(label="Enable Debug Tab", tag="settings_debug_tab", default_value=config["debug_tab"])
 
