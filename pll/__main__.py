@@ -13,7 +13,6 @@ class DPLLReceiver:
         self.samplecount = 0
         self.starttime = None
         self.accumulated_f_est = []
-        self.accumulated_p_lock = []
         self.accumulated_error = []
 
     def handler(self, samples):
@@ -23,7 +22,6 @@ class DPLLReceiver:
         out = self.dpll.run(samples)
         if len(samples) > 0:
             self.accumulated_f_est.extend(out['f_est'])
-            self.accumulated_p_lock.extend(out['p_lock'])
             self.accumulated_error.extend(out['error'])
 
         self.samplecount += len(samples)
@@ -33,17 +31,14 @@ class DPLLReceiver:
             self.starttime = time.time()
             self.samplecount = 0
             self.accumulated_f_est = []
-            self.accumulated_p_lock = []
             self.accumulated_error = []
 
     def print_state(self):
         if self.accumulated_f_est:
             avg_f_est = np.mean(self.accumulated_f_est)
-            avg_p_lock = np.mean(self.accumulated_p_lock)
             avg_error = np.mean(self.accumulated_error)
             print(f"[{self.samplecount} sps] "
                   f"f_est (avg): {avg_f_est:>8.2f} Hz | "
-                  f"p_lock (avg): {avg_p_lock:>5.3f} | "
                   f"error (avg): {avg_error:>6.3f} rad")
         else:
             print(f"Received {self.samplecount} samples")
@@ -65,4 +60,4 @@ if __name__ == "__main__":
     receiver = DPLLReceiver(f_s=f_s, bw_hz=args.bw)
 
     # Blocks and receives
-    receive_samples(receiver.handler, port=1234, sample_format='cf32')
+    receive_samples(receiver.handler, port=12345, sample_format='cs16')

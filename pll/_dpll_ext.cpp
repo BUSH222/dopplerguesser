@@ -6,12 +6,11 @@
 
 namespace py = pybind11;
 
-std::tuple<py::array_t<float>, py::array_t<float>, py::array_t<float>, py::array_t<float>, py::array_t<std::complex<float>>, float, float, float>
+std::tuple<py::array_t<float>, py::array_t<float>, py::array_t<std::complex<float>>, float, float>
 run_dpll_loop(py::array_t<std::complex<float>> samples, 
              float nco_theta, float dphi0, float dphi_max, 
              float lf_integrator, float K1, float K2, 
-             float f_s, float f_center, 
-             float beta, float sigma2, float LOCK_THRESH) 
+             float f_s, float f_center) 
 {
     py::buffer_info buf = samples.request();
     int N = buf.size;
@@ -21,14 +20,10 @@ run_dpll_loop(py::array_t<std::complex<float>> samples,
     // Output arrays
     auto errors = py::array_t<float>(N);
     auto f_ests = py::array_t<float>(N);
-    auto p_locks = py::array_t<float>(N);
-    auto sigma2s = py::array_t<float>(N);
     auto nco_vals = py::array_t<std::complex<float>>(N);
 
     auto err_ptr = static_cast<float*>(errors.request().ptr);
     auto fest_ptr = static_cast<float*>(f_ests.request().ptr);
-    auto plock_ptr = static_cast<float*>(p_locks.request().ptr);
-    auto sig_ptr = static_cast<float*>(sigma2s.request().ptr);
     auto nco_ptr = static_cast<std::complex<float>*>(nco_vals.request().ptr);
 
     const float twopi = 2.0f * M_PI;
@@ -58,18 +53,12 @@ run_dpll_loop(py::array_t<std::complex<float>> samples,
         // 5. Frequency estimate
         float f_est = f_center + lf_integrator * f_s / twopi;
 
-        // 6. Lock detection
-        sigma2 = beta * sigma2 + (1.0f - beta) * (phi_e * phi_e);
-        float p_lock = sigma2;
-
         err_ptr[i] = phi_e;
         fest_ptr[i] = f_est;
-        plock_ptr[i] = p_lock;
-        sig_ptr[i] = sigma2;
         nco_ptr[i] = nco_val;
     }
 
-    return std::make_tuple(errors, f_ests, p_locks, sigma2s, nco_vals, nco_theta, lf_integrator, sigma2);
+    return std::make_tuple(errors, f_ests, nco_vals, nco_theta, lf_integrator);
 }
 
 PYBIND11_MODULE(_dpll_ext, m) {

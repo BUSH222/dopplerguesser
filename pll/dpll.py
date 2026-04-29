@@ -26,19 +26,11 @@ class DPLL:
         # NCO
         self.nco = NCO(f_s=f_s, f_center=f_center, f_max=f_max)
 
-        # Lock detector
-        tau = 10.0 / bw_hz
-        self._beta = np.exp(-1.0 / (f_s * tau))
-        self._sigma2 = 0.0
-        self._LOCK_THRESH = (np.pi / 6) ** 2
-
         # self.output_buffer = []
 
     def set_bandwidth(self, bw_hz: float):
         self._bw = bw_hz
         self.loop_filter.update_params(self.f_s, bw_hz, self._zeta)
-        tau = 10.0 / bw_hz
-        self._beta = np.exp(-1.0 / (self.f_s * tau))
 
     def set_f_max(self, f_max: float):
         self.nco.update_limits(f_max)
@@ -49,7 +41,7 @@ class DPLL:
 
     def run(self, samples: np.ndarray) -> dict:
         """Process a block of complex samples. Returns arrays of outputs."""
-        errors, f_ests, sigma2s_raw, sigma2s, nco_vals, nco_theta, lf_int, sigma2_out = run_dpll_loop(
+        errors, f_ests, nco_vals, nco_theta, lf_int = run_dpll_loop(
             samples,
             self.nco.theta,
             self.nco.dphi0,
@@ -58,22 +50,14 @@ class DPLL:
             self.loop_filter.K1,
             self.loop_filter.K2,
             self.f_s,
-            self.f_center,
-            self._beta,
-            self._sigma2,
-            self._LOCK_THRESH
+            self.f_center
         )
-
-        p_locks = np.exp(-sigma2s_raw / self._LOCK_THRESH)
 
         self.nco.theta = nco_theta
         self.loop_filter.integrator = lf_int
-        self._sigma2 = sigma2_out
 
         return {
             'error': errors,
             'f_est': f_ests,
-            'p_lock': p_locks,
-            'sigma2': sigma2s,
             'nco': nco_vals,
         }
