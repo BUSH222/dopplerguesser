@@ -46,7 +46,7 @@ class DPLLReceiver:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run DPLL Receiver.")
-    parser.add_argument("--bw", type=float, default=1000, help="PLL Bandwidth in Hz")
+    parser.add_argument("--bw", type=float, default=500, help="PLL Bandwidth in Hz")
     parser.add_argument("--sample_rate", type=float, help="Sample rate")
     args = parser.parse_args()
     if args.sample_rate:
