@@ -3,13 +3,10 @@ from .numerically_controlled_oscillator import NCO
 import numpy as np
 import math
 
-try:
-    from ._dpll_ext import run_dpll_loop  # type: ignore
-    HAS_EXT = True
-except ImportError:
-    HAS_EXT = False
-
-assert HAS_EXT
+from ._dpll_ext import run_dpll_loop  # type: ignore
+# if this ^ raises an error,
+# run python setup.py build_ext --inplace
+# to compile the C++ extension before using this module
 
 
 class DPLL:

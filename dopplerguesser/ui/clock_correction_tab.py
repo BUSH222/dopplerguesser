@@ -3,6 +3,7 @@ import numpy as np
 import time
 from dopplerguesser.script_control.runner import DPLLRunner
 from dopplerguesser.misc.rigctl_query import query_rigctl
+from dopplerguesser.config import config
 
 
 class ClockCorrectionController:
@@ -14,10 +15,23 @@ class ClockCorrectionController:
         self.limit = 1000
 
     def start(self):
-        _, sample_rate = query_rigctl()
+        try:
+            freq, sample_rate = query_rigctl()
+            dpg.set_value("txt_center_freq_cc", f"Central Frequency (Hz): {freq}")
+        except Exception as e:
+            print(f"Rigctl query failed: {e}")
+            freq, sample_rate = 0, 2000000
+            dpg.set_value("txt_center_freq_cc", "Central Frequency (Hz): Error/Unknown")
+
+        bw = int(dpg.get_value("combo_bw_cc"))
+        use_fft = dpg.get_value("cb_use_fft_cc")
+
         params = {
             "s": sample_rate,
-            "sample_format": "cs16"
+            "sample_format": "cs16",
+            "center_freq": freq,
+            "bw": bw,
+            "use_fft_freq_find": use_fft
         }
         self.runner = DPLLRunner(port=12345, params=params)
         self.plot_x = []
@@ -26,6 +40,7 @@ class ClockCorrectionController:
 
         dpg.configure_item("drift_series", x=[], y=[])
         dpg.configure_item("btn_start_calib", label="Stop Calibration", callback=stop_calibration)
+        dpg.configure_item("cb_use_fft_cc", enabled=False)
         self.runner.start(on_data_callback=self.handle_data)
 
     def stop(self):
@@ -33,6 +48,11 @@ class ClockCorrectionController:
             self.runner.stop()
             self.runner = None
         dpg.configure_item("btn_start_calib", label="Start Calibration", callback=start_calibration)
+        dpg.configure_item("cb_use_fft_cc", enabled=True)
+
+    def set_bw(self, sender, app_data, user_data):
+        if self.runner and self.runner.is_running():
+            self.runner.set_bandwidth(int(app_data))
 
     def handle_data(self, new_data_list):
         for sec_idx, val in new_data_list:
@@ -146,6 +166,20 @@ def draw_clock_correction_tab():
 
             dpg.add_button(label="Start Calibration", tag="btn_start_calib", width=-1,
                            callback=start_calibration)
+
+            dpg.add_separator()
+            dpg.add_text("Central Frequency (Hz): N/A", tag="txt_center_freq_cc")
+            dpg.add_checkbox(label="use FFT-based frequency finding", tag="cb_use_fft_cc", default_value=True)
+            with dpg.tooltip("cb_use_fft_cc"):
+                dpg.add_text("works best when carriers are present")
+            
+            bw_list = [b.strip() for b in config["pll_bandwidths"].split(",")]
+            default_bw = bw_list[2] if len(bw_list) > 2 else bw_list[0]
+            dpg.add_text("PLL Bandwidth (Hz):")
+            dpg.add_combo(bw_list, tag="combo_bw_cc", default_value=default_bw, callback=_controller.set_bw)
+            
+            dpg.add_spacer(height=5)
+            dpg.add_text("Clock Readings:")
 
             dpg.add_text("Current clock drift: N/A Hz", tag="clock_drift_text", color=(255, 200, 100))
             dpg.add_text("Average clock drift: N/A Hz", tag="avg_drift_text", color=(200, 200, 255))

@@ -6,6 +6,13 @@ from pll.dpll import DPLL
 from pll.load_samples import receive_samples
 
 
+def calculate_f_max(center_freq: float) -> float:
+    if not center_freq or center_freq <= 0:
+        return 120e3
+    scaling_factor = config.get("pll_max_frequency_multiplier", 2)
+    return center_freq * 27e-6 * scaling_factor
+
+
 class DPLLRunner:
     """
     Runner for managing DPLL execution and data streaming.
@@ -45,8 +52,11 @@ class DPLLRunner:
 
         sample_rate = self.params.get('s', 192000)
         bw_hz = self.params.get('bw', 900)
+        center_freq = self.params.get('center_freq', 0)
+        use_fft = self.params.get('use_fft_freq_find', True)
 
-        self.dpll = DPLL(f_s=sample_rate, bw_hz=bw_hz, f_max=120e3)
+        f_max_val = calculate_f_max(center_freq)
+        self.dpll = DPLL(f_s=sample_rate, bw_hz=bw_hz, f_max=f_max_val, use_fft_freq_find=use_fft)
 
         self._running = True
         self._thread = threading.Thread(target=self._monitor_stream, daemon=True)
@@ -75,6 +85,10 @@ class DPLLRunner:
             self.current_bin = bin_index
 
         self.current_buffer.extend(f_ests)
+
+    def set_bandwidth(self, bw_hz: float):
+        if self.dpll:
+            self.dpll.set_bandwidth(bw_hz)
 
     def stop(self):
         """Stops the dpll process and the monitor thread."""
