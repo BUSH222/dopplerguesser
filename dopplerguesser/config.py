@@ -18,7 +18,7 @@ class ConfigManager:
         "filter_doppler_threshold": 10000,
         "filter_visibility_min_elevation": 0,
         "propagation_cache_duration": 1000,
-        "pll_bandwidths": "500,700,900,1100,1300,1500,2000",
+        "pll_bandwidths": "300,500,700,900,2000",
         "pll_max_frequency_multiplier": 2,
         "pll_zeta": 0.707,
     }
