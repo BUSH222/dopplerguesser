@@ -10,7 +10,7 @@ def calculate_f_max(center_freq: float) -> float:
     if not center_freq or center_freq <= 0:
         return 120e3
     scaling_factor = config.get("pll_max_frequency_multiplier", 2)
-    return center_freq * 27e-6 * scaling_factor
+    return center_freq * 28e-6 * scaling_factor
 
 
 class DPLLRunner:

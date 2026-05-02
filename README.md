@@ -28,7 +28,6 @@ It is designed to work in conjunction with [SDR++](https://github.com/AlexandreR
 
 ### Prerequisites
 - [Python 3.13+](https://www.python.org/downloads/)
-- GNURadio installed from [radioconda](https://github.com/radioconda/radioconda-installer) (Planned to be phased out from this project soon)
 
 ### Installation
 1) Clone this repository:  
@@ -41,17 +40,16 @@ It is designed to work in conjunction with [SDR++](https://github.com/AlexandreR
 ### Initial Configuration
 1) Navigate to the settings tab in the application.
 2) In the `Observer Location` tab, set your position (latitude, longitude, and altitude)
-3) In the `Connections` tab, set the python path created by radioconda (likely different from python executing this application). On MacOS, the default is /Users/username/radioconda/bin/python. This path can be found when executing any GNURadio script from the companion.
-4) Save the settings
+3) Save the settings
 
 ### SDR++ Configuration
 1) Enable the `iq_exporter` and `rigctl_server` modules in the module manager. If IQ Exporter is missing on MacOS, you will instead need to build sdr++ from source, or download it from my [fork](https://github.com/BUSH222/SDRPlusPlus).
 2) Disable the `radio` module
-3) Configure IQ Exporter: set mode to VFO, samplerate to 2-6 MS/s, Protocol to TCP (Server), sample type to Int16, Packet size to 1024, host to localhost, port to 12345. Start the IQ Exporter.
+3) Configure IQ Exporter: set mode to VFO, any sample rate, Protocol to TCP (Server), sample type to Int16, Packet size to max (32768 bytes), host to localhost, port to 12345. Start the IQ Exporter.
 4) Configure Rigctl server: set host to localhost, port to 4532, controlled VFO to IQ Exporter, check tuning and listen on startup, and start.
 
 ## Usage
-> This program should work at or below 2300MHz. It has been tested on S- and L- band satellite signals.
+> This program should work on all frequency bands, but it has been tested only on S- and L- band satellite signals so far.
 
 The program is tall and narrow on purpose to fit nicely along SDR++ in split view like this:
 ![Example Usage](readme_materials/exampleusage.png)
@@ -59,9 +57,9 @@ The program is tall and narrow on purpose to fit nicely along SDR++ in split vie
 1) Identify a continuous signal exhibiting doppler shift
 2) Move IQ Exporter's VFO to roughly around the signal. 
 > Tuning tip: Doppler shift from LEO satellites makes the frequency go down over time, so tune a bit lower than the frequency.
-3) With IQ Exporter and Rigctl server running in SDR++, click `Connect` in the live view tab of the application. After ~5 seconds the frequency readings will start appearing in the Doppler History graph.
-4) Wait for the PLL to lock onto the signal. The stronger and closer to 0 it is, the faster it will lock. The lock will be signified by a sharp peak (or drop) followed by a slowly descending plateau.
-5) Once locked, clear the irrelevant pll locking data by pressing the clear button.
+3) With IQ Exporter and Rigctl server running in SDR++, click `Connect` in the live view tab of the application. The frequency readings will start appearing in the Doppler History graph.
+4) Wait for the PLL to lock onto the signal. The stronger it is, the faster it will lock. You can make the PLL lock faster by connecting with the "use FFT-based frequency finding" option on and by playing around with PLL bandwidths. Larger PLL bandwidths will lock faster but require a stronger signal. The lock will be signified by a sharp peak (or drop) followed by a slowly descending plateau. 
+5) Once locked, clear the irrelevant PLL locking data by pressing the clear button.
 6) Click `Start Predicting` and after some time look at the table. It will show the top predicted candidates for the transmission. The longer you track the satellite, the bigger the confidence will be.
 7) After the satellite signal gets too weak, click the `Disconnect` button and trim the last points using `remove last point` button if necessary. You can now judge whether the prediction was successful or not and save the plot data for further processing.
 
@@ -90,34 +88,39 @@ To check if your clock is suitable:
 4. Monitor the "Average clock drift" and "Current slope" values
 5. Check that the clock status shows "stable" (slope < 0.1 Hz/s)
 
-The calibration works by measuring the apparent frequency offset of a signal that should have zero Doppler shift. Any observed offset is attributed to clock drift in your receiver.
+The calibration works by measuring the apparent frequency offset of a signal that should have zero Doppler shift and other drift. Any observed offset is attributed to clock drift in your receiver.
 
 #### TLE age
 Always update TLEs before starting an observation. TLEs get old and imprecise very quickly, leading to big errors between predicted and observed data.
 
 #### Classified TLEs
-The Celestrak API is not perfect: it omits some TLEs, such as, for example, the TLEs for the NOSS-3 series satellites. Manually add their TLEs and run the .csv through the processing tab.
-
+The Celestrak API is not perfect: it omits some TLEs, such as, for example, the TLEs for the NOSS-3 series satellites. Use the Mike McCants' Classified source. It is not perfect, but should contain some commonly transmitting satellites.
 
 ## Algorithm
 This section will describe the algorithmic approach used in this application. 
 
 ### 1. Signal processing
-The signal processing in this project is done with GNURadio, using the PLL Frequency Detector block. Here is the flowgraph:
-![Flowgraph](readme_materials/flowgraph.png)
-The flowgraph accepts 2 parameters: sample rate and whether to remove the DC spike or not. The source of this flowgraph is a TCP Source which is directly connected to the IQ Exporter in SDR++. It outputs int16, or "short" samples which are converted and scaled to complex float 32. The data then gets throttled, and the DC spike gets removed if the parameter was specified (Important for the HackRF, for example, where the PLL keeps locking onto the DC spike even with another signal present). Then comes the PLL Frequency Detector, which is running a phase locked loop with the following parameters:
+> REDO
+The signal processing in this project is done with a native implementation of a Phase-Locked loop. This implementation does not output a signal whose phase is fixed relative to the phase of an input signal, instead it is used to estimate the frequency of an incoming signal. Such a PLL outputs the estimated frequency of that signal.
 
-$$ Loop\ bandwidth = \frac{\pi}{10000}, \quad \omega_{\text{max}} = \frac{2\pi \cdot f_{\text{max-doppler}}}{f_s}, \quad \omega_{\text{min}} = \frac{-2\pi \cdot f_{\text{max-doppler}}}{f_s} $$
+The IQ samples get sent over from SDR++ from the IQ Exporter module. The application acts as a TCP Client. These samples get accumulated in a small internal buffer before being processed further. Sample rate gets queried using rigctl, input samples types can be set manually, the program works with cs16 by default.
 
-The max doppler in this case is 70KHz, which allows for operation on S-band and below. Future versions of this program will have configurable max doppler bounds and the loop bandwidth.
+If the FFT-based frequency finding option is turned on, at the start these samples get accumulated for 1 second. Then, a discrete FFT is calculated. The bin with the highest amplitude is then found and converted into frequency $f_0$, which is then set in the NCO. If this option is not used, its central frequency of the NCO is initialized as 0.
 
-The PLL output is converted from normalized frequency to Hz:
+The other parameter of the PLL which is calculated before initialization is $f_{max}$ - the maximum frequency offset a PLL can track above the tuned frequency. It is calculated using a general approximation of the highest doppler shift for the incoming frequency, and an optional multiplier M to extend the range, which is needed due to tuning imperfections and the device's or satellite's reference clock errors:
 
-$$ f_{\text{doppler}}(t) = \frac{\omega_{\text{PLL}}(t) \cdot f_s}{2\pi} $$
+$$f_{max} = (\frac{c + v_0}{c - v_s}-1) \cdot f_{sat}  \cdot M$$
+For the worst case scenario we can take v_0 to be the orbital speed of a an object at 100km:
 
-The signal is smoothed using a moving average filter with window size $N = 1000$ samples, then decimated to produce approximately $N$ measurements per second. These measurements are fed into a TCP Sink which enables the connection with the main application.
+$$v=\sqrt{\frac{GM}{r}}\approx 7850\ m/s$$
+The station moving the opposite way on the horizon will have a velocity of about 465.2 m/s.
+Substituting these values in the equation above we get a simplification:
 
-The main application averages the data even more: It collects all the incoming data every second and separates it into bins. All observations coming in at $[N-0.5, N+0.5)$, where N is an integer corresponding to a unix timestamp, get averaged to eliminate most of the drift in the PLL.
+$$f_{max} \approx  2.8*10^{-5} \cdot f_{sat} \cdot M$$
+
+The other important option is the PLL bandwidth. The larger it is, the faster a PLL can acquire and track the signal, but it must be stronger. The selection of PLL bandwidths can be set in settings and any can be selected during the operation of the program. The intention is to quickly lock onto a signal using a larger PLL bandwidth, then precisely track it using a smaller PLL bandwidth.[1][2]
+
+The output of the PLL is inherently noisy due to phase jitter and dynamic stress error, which are mainly produced by thermal noise. [3] To remove most of this noise the signal is smoothed using binned averaging - all observations coming in at $[N-0.5, N+0.5)$, where N is an integer corresponding to a unix timestamp, get averaged to eliminate most of the drift in the PLL. The output of this is a map of {time: frequency}, which is very easy to work with in the later steps.
 
 ### 2. Frequency to relative speed
 The classic doppler shift formula is defined as
@@ -142,7 +145,7 @@ We can define the relative velocity and determine that it is much less than the 
 
 > Note: Worst case scenario relative velocity here would not exceed $1.2\times10^4$ m/s (earth escape velocity + rotation at equator) compared to the speed of light at $3\times10^8$ m/s
 
-Keeping only the first two terms we get:
+Keeping only the first two terms we get [4]:
 
 $$\frac{f_{obs}}{f_{sat}} \approx 1 + \frac{v_{rel}}{c}$$
 
@@ -164,9 +167,9 @@ As an example, at 2.25 GHz, the maximum expected doppler shift in our worst case
 
 ### 3. Observer and Satellite position propagation
 #### Satellite
-This project gets the orbital elements from [Celestrak's API](https://celestrak.org/NORAD/elements/) as TLEs meant to be propagated using SGP4. However, propagating to every observed point is computationally expensive, especially for many targets at once. This is why a different approach was needed.
+This project gets the orbital elements as TLEs from various sources: celestrak, space-track.org, ReTLEctor, The TLEs are meant to be propagated using SGP4. However, propagating to every observed point is computationally expensive, especially for many targets at once. This is why a different approach was needed.
 
-This project propagates using SGP4 (using skyfield) to only one point - the observation start $t_0$. 
+This project propagates using SGP4 (using skyfield [0]) to only one point - the observation start $t_0$. 
 
 $$ \mathbf{r}_{\text{sat}}(t_0), \mathbf{v}_{\text{sat}}(t_0) = \text{SGP4}(\text{TLE}, t_0) $$
 
@@ -239,4 +242,9 @@ Special thanks to the amateur radio and satellite reception communities for thei
 
 
 ## References
-todo
+0) [ascl:1907.024] Skyfield: High precision research-grade positions for planets and Earth satellites generator 
+1) Vidal, Iñigo & van der Merwe, Johannes & Nurmi, Jari & Rügamer, Alexander & Felber, Wolfgang. (2021). Evaluation of Adaptive Loop-Bandwidth Tracking Techniques in GNSS Receivers. Sensors. 21. 502. 10.3390/s21020502. 
+2) Cong, L.; Li, X.; Jin, T.; Yue, S.; Xue, R. An Adaptive INS-Aided PLL Tracking Method for GNSS Receivers in Harsh Environments. Sensors 2016, 16, 146. https://doi.org/10.3390/s16020146 
+3) Kaplan E.D., Hegarty C.J., "Understanding GPS: Principles and Applications", second edition.
+4) https://gnss-sdr.org/docs/sp-blocks/observables/
+5) Curtis, Orbital Mechanics for Engineering Students, Section 3.7
