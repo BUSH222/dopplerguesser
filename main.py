@@ -13,7 +13,7 @@ with dpg.window(tag="Primary Window"):
         draw_clock_correction_tab()
         draw_processing_tab()
 
-dpg.create_viewport(title='Doppler Guesser', width=400, height=800)
+dpg.create_viewport(title='DopplerGuesser', width=400, height=800)
 dpg.setup_dearpygui()
 dpg.show_viewport()
 

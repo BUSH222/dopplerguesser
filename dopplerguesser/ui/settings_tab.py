@@ -16,8 +16,6 @@ def save_settings(sender, app_data, user_data):
     config["tle_file_path"] = dpg.get_value("settings_tle_file_path")
     config["spacetrack_login"] = dpg.get_value("settings_spacetrack_login")
     config["spacetrack_password"] = dpg.get_value("settings_spacetrack_password")
-    config["gr_path"] = dpg.get_value("settings_gr_path")
-    config["gr_tcp"] = dpg.get_value("settings_gr_tcp")
 
     config["filter_constellations"] = dpg.get_value("settings_filter_constellations")
     config["filter_constellations_list"] = dpg.get_value("settings_filter_constellations_list")
@@ -116,12 +114,6 @@ def draw_settings_tab():
             dpg.add_input_text(tag="settings_spacetrack_password",
                                default_value=config.get("spacetrack_password", ""), width=-1, password=True)
 
-        with dpg.collapsing_header(label="Connections"):
-            dpg.add_text("GNURadio Python Path")
-            dpg.add_input_text(tag="settings_gr_path", default_value=config["gr_path"], width=-1)
-            dpg.add_text("GNURadio TCP Server URL")
-            dpg.add_input_text(tag="settings_gr_tcp", default_value=config["gr_tcp"], width=-1)
-
         with dpg.collapsing_header(label="Filters"):
             dpg.add_checkbox(label="Filter satellite constellations", tag="settings_filter_constellations",
                              default_value=config["filter_constellations"])
@@ -150,9 +142,21 @@ def draw_settings_tab():
             dpg.add_text("Propagation cache duration (s):")
             dpg.add_input_int(tag="settings_propagation_cache_duration",
                               default_value=config["propagation_cache_duration"])
-            dpg.add_text("PLL thresholds:")
-            dpg.add_text('soon')
-
+            dpg.add_text("PLL:")
+            dpg.add_text("PLL bandwidth options (Hz), separated by comma:")
+            dpg.add_input_text(tag="settings_pll_bandwidths",
+                               default_value=config["pll_bandwidths"], width=-1)
+            dpg.add_text("PLL max frequency multiplier:", tag="settings_pll_max_frequency_multiplier_label")
+            dpg.add_input_int(tag="settings_pll_max_frequency_multiplier",
+                              default_value=config["pll_max_frequency_multiplier"])
+            with dpg.tooltip("settings_pll_max_frequency_multiplier_label"):
+                dpg.add_text("For any frequency f, \nthe max frequency offset is f_tx*2.6*10^-5.\n\
+To account for clock offsets \nand imprecise tuning, this multiplier\n\
+allows you to set a higher threshold \nfor the PLL to successfully lock.\n\
+Default is 2")
+            dpg.add_text("PLL zeta (damping factor):")
+            dpg.add_input_float(tag="settings_pll_zeta",
+                                default_value=config["pll_zeta"])
         with dpg.collapsing_header(label="Misc"):
             dpg.add_checkbox(label="Enable Debug Tab", tag="settings_debug_tab", default_value=config["debug_tab"])
 

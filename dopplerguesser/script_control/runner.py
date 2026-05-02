@@ -1,134 +1,119 @@
-import subprocess
 import threading
-import socket
 import time
 import numpy as np
-import os
-from dopplerguesser.config import config
+from dopplerguesser.config import config  # noqa: F401
+from pll.dpll import DPLL
+from pll.load_samples import receive_samples
 
 
-class FlowgraphRunner:
-    def __init__(self, script_path, host='127.0.0.1', port=12346, params=None):
-        self.script_path = script_path
+def calculate_f_max(center_freq: float) -> float:
+    if not center_freq or center_freq <= 0:
+        return 120e3
+    scaling_factor = config.get("pll_max_frequency_multiplier", 2)
+    return center_freq * 28e-6 * scaling_factor
+
+
+class DPLLRunner:
+    """
+    Runner for managing DPLL execution and data streaming.
+
+    Args:
+        host (str): The host address to connect to (default: '127.0.0.1').
+        port (int): The port to connect to (default: 12345).
+        params (dict, optional): Configuration parameters. Supported keys:
+            - 's' (int): Sample rate (default: 192000).
+            - 'bw' (int): Bandwidth in Hz (default: 900).
+            - 'sample_format' (str): Sample format (default: 'cs16').
+    """
+    def __init__(self, host='127.0.0.1', port=12345, params=None):
         self.host = host
         self.port = port
         self.params = params if params else {}
-        self.process = None
         self._running = False
         self._thread = None
         self.on_data = None
         self.first_reception_time = None
+        self.dpll = None
+        self.stop_event = threading.Event()
+
+        self.current_bin = 0
+        self.current_buffer = []
 
     def start(self, on_data_callback=None):
         if self._running:
-            print("FlowgraphRunner is already running.")
+            print("DPLLRunner is already running.")
             return
 
         self.on_data = on_data_callback
         self.first_reception_time = None
+        self.current_bin = 0
+        self.current_buffer = []
+        self.stop_event.clear()
 
-        python_exec = config.get('gr_path')
-        if not python_exec or not os.path.exists(python_exec):
-            python_exec = "python3"
+        sample_rate = self.params.get('s', 192000)
+        bw_hz = self.params.get('bw', 900)
+        center_freq = self.params.get('center_freq', 0)
+        use_fft = self.params.get('use_fft_freq_find', True)
 
-        if not os.path.exists(self.script_path):
-            print(f"Error: Script not found at {self.script_path}")
-            return
+        f_max_val = calculate_f_max(center_freq)
+        self.dpll = DPLL(f_s=sample_rate, bw_hz=bw_hz, f_max=f_max_val, use_fft_freq_find=use_fft)
 
-        cmd = [python_exec, self.script_path]
-        for key, value in self.params.items():
-            cmd.append(f"-{key}")
-            cmd.append(str(value))
-        print(f"Launching flowgraph: {' '.join(cmd)}")
-
-        try:
-            self.process = subprocess.Popen(cmd)
-            self._running = True
-        except Exception as e:
-            print(f"Failed to start subprocess: {e}")
-            return
-
+        self._running = True
         self._thread = threading.Thread(target=self._monitor_stream, daemon=True)
         self._thread.start()
 
-    def stop(self):
-        """Stops the flowgraph process and the monitor thread."""
-        self._running = False
-        if self.process:
-            if self.process.poll() is None:
-                print("Terminating flowgraph process...")
-                self.process.terminate()
-                try:
-                    self.process.wait(timeout=2)
-                except subprocess.TimeoutExpired:
-                    print("Force killing process...")
-                    self.process.kill()
-            self.process = None
-
-        if self._thread and self._thread.is_alive():
-            pass
-        print("Flowgraph runner stopped.")
-
-    def is_running(self):
-        return self._running and (self.process is not None) and (self.process.poll() is None)
-
-    def _monitor_stream(self):
-        """Internal method to handle socket connection and data streaming."""
-        time.sleep(5)
-
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(2.0)
-
-        connected = False
-        attempts = 0
-        while not connected and attempts < 5 and self._running:
-            try:
-                sock.connect((self.host, self.port))
-                sock.setblocking(False)
-                connected = True
-                print(f"Connected to flowgraph socket at {self.host}:{self.port}")
-            except (ConnectionRefusedError, socket.timeout):
-                if not self._running:
-                    break
-                time.sleep(1)
-                attempts += 1
-
-        if not connected:
-            print("Failed to connect to flowgraph socket after retries.")
-            if self._running:
-                pass
-            sock.close()
+    def dpll_data_handler(self, samples):
+        if not self._running:
             return
 
-        current_bin = 0
-        current_buffer = []
+        now = time.time()
+        if self.first_reception_time is None:
+            self.first_reception_time = now
 
-        while self._running:
-            try:
-                chunk = sock.recv(4096)
-                if not chunk:
-                    break
-                now = time.time()
-                if self.first_reception_time is None:
-                    self.first_reception_time = now
+        out = self.dpll.run(samples)
+        f_ests = out['f_est']
 
-                relative_time = now - self.first_reception_time
-                bin_index = int(relative_time + 0.5)
-                data = np.frombuffer(chunk, dtype=np.float32)
-                if bin_index > current_bin:
-                    if current_buffer:
-                        avg_val = float(np.mean(current_buffer))
-                        if self.on_data:
-                            self.on_data([(current_bin, avg_val)])
-                    current_buffer = []
-                    current_bin = bin_index
-                current_buffer.extend(data)
+        relative_time = now - self.first_reception_time
+        bin_index = int(relative_time + 0.5)
 
-            except BlockingIOError:
-                time.sleep(0.01)
-            except Exception as e:
-                print(f"Socket stream error: {e}")
-                break
+        if bin_index > self.current_bin:
+            if self.current_buffer:
+                avg_val = float(np.mean(self.current_buffer))
+                if self.on_data:
+                    self.on_data([(self.current_bin, avg_val)])
+            self.current_buffer = []
+            self.current_bin = bin_index
 
-        sock.close()
+        self.current_buffer.extend(f_ests)
+
+    def set_bandwidth(self, bw_hz: float):
+        if self.dpll:
+            self.dpll.set_bandwidth(bw_hz)
+
+    def stop(self):
+        """Stops the dpll process and the monitor thread."""
+        self._running = False
+        self.stop_event.set()
+        if self._thread and self._thread.is_alive():
+            self._thread.join(timeout=2.0)
+        print("DPLL runner stopped.")
+
+    def is_running(self):
+        return self._running
+
+    def _monitor_stream(self):
+        """Internal method to handle socket connection and data streaming via DPLL."""
+        print(f"Connecting to to sdr++ at {self.host}:{self.port}")
+
+        sample_format = self.params.get('sample_format', 'cs16')
+
+        receive_samples(
+            handler=self.dpll_data_handler,
+            host=self.host,
+            port=self.port,
+            sample_format=sample_format,
+            stop_event=self.stop_event
+        )
+
+        self._running = False
         print("Socket monitor thread finished.")
