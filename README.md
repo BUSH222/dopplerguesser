@@ -66,12 +66,13 @@ The program is tall and narrow on purpose to fit nicely along SDR++ in split vie
 The data you saved can be processed manually and used in the `Processing` tab.
 
 ### Result interpretation
-Look at the top candidates table. It shows the top 5 candidates and their RMSE (root mean squared error). It is a number that shows how much on average the predicted values differ from the observed values. The lower it is the better the match.
+Look at the top candidates table. It shows the top 5 candidates and their RMSE (root mean squared error). It is a number that shows how much on average the predicted values differ from the observed values. The lower it is the better the match. Based on empirical observation on S-band:
 
 RMSE <= 50: Perfect match, the prediction is very likely correct.\
 50 < RMSE <= 300: Good match, TLE may be slightly out of date. Check the epoch to confirm.\
 RMSE > 300: Bad match, the prediction is wrong or you have not updated TLEs for a long time.
 
+These results will likely differ on other frequency bands, a more rigorous approach for threshold calculation is required.
 
 > When the program correctly predicted a satellite, the difference in RMSE between the first and second candidate is often very large, over 1000Hz for long passes.
 
@@ -87,6 +88,7 @@ To check if your clock is suitable:
 3. Wait for the PLL to lock (status will change from "Unlocked" to "Locked")
 4. Monitor the "Average clock drift" and "Current slope" values
 5. Check that the clock status shows "stable" (slope < 0.1 Hz/s)
+> Note: the max allowed slope is 0.1 Hz/s by default, because over an average 15 minute pass the frequency should absolutely never drift larger than 90Hz, resulting in a 45Hz RMSE at that frequency. This value was selected for S-band operations and will likely differ in other bands. More empirical testing and verification required.
 
 The calibration works by measuring the apparent frequency offset of a signal that should have zero Doppler shift and other drift. Any observed offset is attributed to clock drift in your receiver.
 
@@ -100,12 +102,11 @@ The Celestrak API is not perfect: it omits some TLEs, such as, for example, the 
 This section will describe the algorithmic approach used in this application. 
 
 ### 1. Signal processing
-> REDO
-The signal processing in this project is done with a native implementation of a Phase-Locked loop. This implementation does not output a signal whose phase is fixed relative to the phase of an input signal, instead it is used to estimate the frequency of an incoming signal. Such a PLL outputs the estimated frequency of that signal.
+The signal processing in this project is done with a native implementation of a Phase-Locked loop. This implementation estimates the frequency of an incoming signal rather than producing a phase-locked output.
 
 The IQ samples get sent over from SDR++ from the IQ Exporter module. The application acts as a TCP Client. These samples get accumulated in a small internal buffer before being processed further. Sample rate gets queried using rigctl, input samples types can be set manually, the program works with cs16 by default.
 
-If the FFT-based frequency finding option is turned on, at the start these samples get accumulated for 1 second. Then, a discrete FFT is calculated. The bin with the highest amplitude is then found and converted into frequency $f_0$, which is then set in the NCO. If this option is not used, its central frequency of the NCO is initialized as 0.
+If the FFT-based frequency finding option is turned on, at the start these samples get accumulated for 1 second. Then, a discrete FFT is calculated. The bin with the highest amplitude is then found and converted into frequency $f_0$, which is then set in the Numerically Controlled Oscillator (NCO). If this option is not used, its central frequency of the NCO is initialized as 0.
 
 The other parameter of the PLL which is calculated before initialization is $f_{max}$ - the maximum frequency offset a PLL can track above the tuned frequency. It is calculated using a general approximation of the highest doppler shift for the incoming frequency, and an optional multiplier M to extend the range, which is needed due to tuning imperfections and the device's or satellite's reference clock errors:
 
@@ -113,7 +114,7 @@ $$f_{max} = (\frac{c + v_0}{c - v_s}-1) \cdot f_{sat}  \cdot M$$
 For the worst case scenario we can take v_0 to be the orbital speed of a an object at 100km:
 
 $$v=\sqrt{\frac{GM}{r}}\approx 7850\ m/s$$
-The station moving the opposite way on the horizon will have a velocity of about 465.2 m/s.
+The station moving the opposite way on the horizon will have a velocity of about 465.2 m/s. [7]
 Substituting these values in the equation above we get a simplification:
 
 $$f_{max} \approx  2.8*10^{-5} \cdot f_{sat} \cdot M$$
@@ -167,9 +168,9 @@ As an example, at 2.25 GHz, the maximum expected doppler shift in our worst case
 
 ### 3. Observer and Satellite position propagation
 #### Satellite
-This project gets the orbital elements as TLEs from various sources: celestrak, space-track.org, ReTLEctor, The TLEs are meant to be propagated using SGP4. However, propagating to every observed point is computationally expensive, especially for many targets at once. This is why a different approach was needed.
+This project gets the orbital elements as TLEs from various sources: celestrak, space-track.org, ReTLEctor. The TLEs are meant to be propagated using SGP4. However, propagating to every observed point is computationally expensive, especially for many targets at once. This is why a different approach was needed.
 
-This project propagates using SGP4 (using skyfield [0]) to only one point - the observation start $t_0$. 
+This project propagates using SGP4 (using skyfield [5]) to only one point - the observation start $t_0$. 
 
 $$ \mathbf{r}_{\text{sat}}(t_0), \mathbf{v}_{\text{sat}}(t_0) = \text{SGP4}(\text{TLE}, t_0) $$
 
@@ -179,7 +180,7 @@ $$ \mathbf{r}(t + \Delta t) = f \mathbf{r}(t) + g \mathbf{v}(t) $$
 
 $$ \mathbf{v}(t + \Delta t) = \dot{f} \mathbf{r}(t) + \dot{g} \mathbf{v}(t) $$
 
-where the coefficients are computed by solving Kepler's equation via Newton-Raphson iteration:
+where the coefficients are computed by solving Kepler's equation via Newton-Raphson iteration [6]:
 
 $$n\Delta t =\Delta E - (1 - \frac{r_0}{a})\sin(\Delta E) + \frac{\mathbf{r}_0 \cdot \mathbf{v}_0}{\sqrt{\mu a}}(1 - \cos(\Delta E))$$
 
@@ -187,7 +188,6 @@ with $a$ being the semi-major axis, $n = \sqrt{\mu/a^3}$ the mean motion, and $\
 
 #### Observer
 The calculation of the Observer's position is similar in approach: It calculates one precise value, accounting for Earth's gyroscopic precession and nutation using skyfield, and then simply rotates the earth for all other points: 
-
 
 The GCRS position at time $t = t_0 + \Delta t$ is:
 
@@ -206,6 +206,7 @@ The Celestrak API currently provides 15000 TLEs for different satellites. Even w
 3. **Visibility Filter:** Require elevation angle at $t_0$ $\theta_{\text{el}} > \theta_{\text{min}}$ (default 0°)
 4. **Constellation Filter:** Exclude specified mega-constellations (e.g., Starlink, OneWeb). This filter alone eliminates 2/3 of the satellites provided by Celestrak.
 5. **Doppler Pre-filter:** Reject if $|\Delta f_{\text{predicted}}(t_0) - \Delta f_{\text{observed}}(t_0)| > \epsilon$ (default threshold $\epsilon = 10000$ Hz). This helps eliminate descending satellites when the target is ascending, for example. However, if the tuning is imprecise this filter can accidentally cut the target.
+The values used in the filters are design choices adapted for S-band. More rigorous testing is required to justify those values.
 
 ### 5. Candidate Scoring
 
@@ -233,18 +234,18 @@ This project relies on several excellent tools and libraries:
 
 - [Skyfield](https://rhodesmill.org/skyfield/) - Elegant astronomy library for satellite position computation and coordinate transformations
 - [SGP4](https://pypi.org/project/sgp4/) - Python implementation of the SGP4 satellite propagation algorithm
-- [GNU Radio](https://www.gnuradio.org/) - Software defined radio framework for signal processing
 - [DearPyGui](https://github.com/hoffstadt/DearPyGui) - Fast and powerful Python GUI framework
 - [SDR++](https://github.com/AlexandreRouma/SDRPlusPlus) - Cross-platform SDR software
 - [CelesTrak](https://celestrak.org/) - Comprehensive source of orbital element data maintained by Dr. T.S. Kelso
+- [ReTLEctor](https://github.com/MrTalon63/ReTLEctor) - A lightweight proxy that caches TLEs from Celestrak to prevent rate-limiting when fetching a lot of data.
 
 Special thanks to the amateur radio and satellite reception communities for their invaluable resources and knowledge sharing.
 
-
 ## References
-0) [ascl:1907.024] Skyfield: High precision research-grade positions for planets and Earth satellites generator 
-1) Vidal, Iñigo & van der Merwe, Johannes & Nurmi, Jari & Rügamer, Alexander & Felber, Wolfgang. (2021). Evaluation of Adaptive Loop-Bandwidth Tracking Techniques in GNSS Receivers. Sensors. 21. 502. 10.3390/s21020502. 
-2) Cong, L.; Li, X.; Jin, T.; Yue, S.; Xue, R. An Adaptive INS-Aided PLL Tracking Method for GNSS Receivers in Harsh Environments. Sensors 2016, 16, 146. https://doi.org/10.3390/s16020146 
-3) Kaplan E.D., Hegarty C.J., "Understanding GPS: Principles and Applications", second edition.
-4) https://gnss-sdr.org/docs/sp-blocks/observables/
-5) Curtis, Orbital Mechanics for Engineering Students, Section 3.7
+1) Vidal, I., van der Merwe, J., Nurmi, J., Rügamer, A., & Felber, W. (2021). Evaluation of Adaptive Loop-Bandwidth Tracking Techniques in GNSS Receivers. Sensors, 21(2), 502. https://doi.org/10.3390/s21020502
+2) Cong, L., Li, X., Jin, T., Yue, S., & Xue, R. (2016). An Adaptive INS-Aided PLL Tracking Method for GNSS Receivers in Harsh Environments. Sensors, 16(2), 146. https://doi.org/10.3390/s16020146
+3) Kaplan, E. D., & Hegarty, C. J. (2006). Understanding GPS: Principles and Applications (2nd ed.). Artech House.
+4) GNSS-SDR Documentation. Observables. https://gnss-sdr.org/docs/sp-blocks/observables/
+5) Rhodes, B. (2024). Skyfield: High precision research-grade positions for planets and Earth satellites generator. https://rhodesmill.org/skyfield/
+6) Curtis, H. D. (2012). Orbital Mechanics for Engineering Students (3rd ed.). Butterworth-Heinemann.
+7) Britannica. How Fast Does Earth Spin? https://www.britannica.com/science/How-Fast-Does-Earth-Spin
