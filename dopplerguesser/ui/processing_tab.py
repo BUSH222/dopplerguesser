@@ -7,7 +7,7 @@ from dopplerguesser.config import config
 from dopplerguesser.predict.fetch_tles import fetch_tles
 from dopplerguesser.predict.filters import (
     filter_visibility, filter_heo, filter_geostationary,
-    filter_by_doppler, filter_constellations
+    filter_by_doppler, filter_constellations, filter_debris, filter_by_epoch
 )
 from dopplerguesser.predict.matcher import score_candidates
 from dopplerguesser.predict.observer import Observer
@@ -93,12 +93,29 @@ class ProcessingViewController:
         """Worker thread for prediction."""
         try:
             prediction_t_start = self.plot_x[0]
-            self.prediction_observer = Observer(
-                lat=config["lat"],
-                lon=config["lon"],
-                alt=config["alt"]
-            )
-            print(f"Observer: {config['lat']}, {config['lon']}, {config['alt']}m")
+
+            # overrides
+            if dpg.get_value("processing_override_start_time"):
+                print('Applying start time override')
+                prediction_t_start = float(dpg.get_value("processing_override_start_time"))
+                for i in range(len(self.plot_x)):
+                    self.plot_x[i] = prediction_t_start + i
+            if dpg.get_value("processing_override_lat")\
+                and dpg.get_value("processing_override_lon")\
+                    and dpg.get_value("processing_override_alt"):
+                self.prediction_observer = Observer(
+                    lat=float(dpg.get_value("processing_override_lat")),
+                    lon=float(dpg.get_value("processing_override_lon")),
+                    alt=float(dpg.get_value("processing_override_alt"))
+                )
+            else:
+                self.prediction_observer = Observer(
+                    lat=config["lat"],
+                    lon=config["lon"],
+                    alt=config["alt"]
+                )
+            print(f"Observer: {self.prediction_observer.lat}, {self.prediction_observer.lon},\
+                  {self.prediction_observer.alt}m")
 
             dpg.set_value("processing_status", "Fetching TLEs...")
             if dpg.get_value("use_internal_tles"):
@@ -121,6 +138,16 @@ class ProcessingViewController:
                 if constellations:
                     satellites = filter_constellations(satellites, constellations)
                     print(f"After constellation filter: {len(satellites)}")
+
+            # Debris filter
+            if config["filter_debris"]:
+                satellites = filter_debris(satellites)
+                print(f"After debris filter: {len(satellites)}")
+
+            # Epoch filter
+            if config["filter_by_epoch"] and config["max_tle_age_days"] > 0:
+                satellites = filter_by_epoch(satellites, maxage=config["max_tle_age_days"])
+                print(f"After epoch filter: {len(satellites)}")
 
             satellites = filter_geostationary(satellites)
             print(f"After geostationary filter: {len(satellites)}")
@@ -221,15 +248,17 @@ class ProcessingViewController:
             print("Prediction worker thread finished.")
 
     def _update_results_table(self):
-        """Update the results table with top candidates."""
         for i in range(5):
             if i < len(self.prediction_results):
                 sat, rmse = self.prediction_results[i]
                 dpg.set_value(f"prediction_sat_processing_{i}", sat.satellite.name)
                 dpg.set_value(f"prediction_rmse_processing_{i}", f"{rmse:.2f}")
+                norad_id = sat.satellite.model.satnum
+                dpg.set_value(f"prediction_sat_processing_{i}_tooltip", f"NORAD ID: {norad_id}")
             else:
                 dpg.set_value(f"prediction_sat_processing_{i}", "—")
                 dpg.set_value(f"prediction_rmse_processing_{i}", "—")
+                dpg.set_value(f"prediction_sat_processing_{i}_tooltip", "No data")
 
     def clear_data(self):
         """Clear loaded data and reset UI."""
@@ -242,6 +271,7 @@ class ProcessingViewController:
         for i in range(5):
             dpg.set_value(f"prediction_sat_processing_{i}", "—")
             dpg.set_value(f"prediction_rmse_processing_{i}", "—")
+            dpg.set_value(f"prediction_sat_processing_{i}_tooltip", "No data")
 
 
 _processing_controller = ProcessingViewController()
@@ -267,7 +297,13 @@ def draw_processing_tab():
             dpg.add_button(label="Clear Data", width=-1,
                            callback=lambda: _processing_controller.clear_data())
             dpg.add_spacer()
-
+        with dpg.collapsing_header(label="Overrides", default_open=False):
+            dpg.add_text("Override observer location (lat, lon, alt in meters)")
+            dpg.add_input_text(tag="processing_override_lat", default_value="", width=-1)
+            dpg.add_input_text(tag="processing_override_lon", default_value="", width=-1)
+            dpg.add_input_text(tag="processing_override_alt", default_value="", width=-1)
+            dpg.add_text("Override start timestamp (unix seconds)")
+            dpg.add_input_text(tag="processing_override_start_time", default_value="", width=-1)
         with dpg.collapsing_header(label="Results", default_open=True):
             dpg.add_button(label="Predict", width=-1, tag="btn_predict_processing",
                            callback=lambda: _processing_controller.run_prediction())
@@ -282,6 +318,8 @@ def draw_processing_tab():
                 for i in range(5):
                     with dpg.table_row():
                         dpg.add_text("—", tag=f"prediction_sat_processing_{i}")
+                        with dpg.tooltip(f"prediction_sat_processing_{i}"):
+                            dpg.add_text("No data", tag=f"prediction_sat_processing_{i}_tooltip")
                         dpg.add_text("—", tag=f"prediction_rmse_processing_{i}")
 
         with dpg.collapsing_header(label="Doppler Curve", default_open=True):

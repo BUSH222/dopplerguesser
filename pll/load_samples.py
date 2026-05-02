@@ -1,0 +1,106 @@
+import numpy as np
+import socket
+import threading
+import queue
+
+
+def receive_samples(handler, host='localhost', port=12345,
+                    chunk_size_bytes=2**17, num_buffers=8, sample_format='cs16', stop_event=None):
+    assert sample_format in ['cs16', 'cf32'], "Unsupported sample format"
+    if sample_format == 'cs16':
+        chunk_size_bytes = (chunk_size_bytes // 4) * 4
+        bytes_per_sample = 4
+    elif sample_format == 'cf32':
+        chunk_size_bytes = (chunk_size_bytes // 8) * 8
+        bytes_per_sample = 8
+
+    free_queue = queue.Queue(maxsize=num_buffers)
+    ready_queue = queue.Queue(maxsize=num_buffers)
+
+    for _ in range(num_buffers):
+        free_queue.put(bytearray(chunk_size_bytes))
+
+    def producer():
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect((host, port))
+            while True:
+                if stop_event and stop_event.is_set():
+                    ready_queue.put(None)
+                    break
+                try:
+                    buf = free_queue.get(timeout=1.0)
+                except queue.Empty:
+                    continue
+                view = memoryview(buf)
+                bytes_received = 0
+
+                while bytes_received < chunk_size_bytes:
+                    if stop_event and stop_event.is_set():
+                        break
+                    try:
+                        n = s.recv_into(view[bytes_received:])
+                        if not n:
+                            break
+                        bytes_received += n
+                    except Exception:
+                        break
+
+                if bytes_received == 0:
+                    ready_queue.put(None)
+                    break
+
+                ready_queue.put((buf, bytes_received))
+
+                if bytes_received < chunk_size_bytes:
+                    ready_queue.put(None)  # Signal EOF
+                    break
+
+    t = threading.Thread(target=producer, daemon=True)
+    t.start()
+
+    try:
+        while True:
+            if stop_event and stop_event.is_set():
+                break
+            try:
+                item = ready_queue.get(timeout=0.5)
+            except queue.Empty:
+                continue
+            if item is None:
+                break
+
+            buf, bytes_valid = item
+
+            samples_valid = bytes_valid // bytes_per_sample
+            if samples_valid > 0:
+                raw_bytes = memoryview(buf)[:samples_valid * bytes_per_sample]
+
+                if sample_format == 'cs16':
+                    raw = np.frombuffer(raw_bytes, dtype=np.int16)
+                    complex_samples = raw.astype(np.float32).view(np.complex64)
+                    complex_samples /= 32768.0
+                else:  # cf32
+                    complex_samples = np.frombuffer(raw_bytes, dtype=np.complex64)
+
+                handler(complex_samples)
+
+            free_queue.put(buf)
+
+    except KeyboardInterrupt:
+        pass
+
+
+def load_samples_from_file(file_path, handler, chunk_size_bytes=2**17,
+                           num_buffers=8, sample_format='cs16', sample_rate=192000):
+    # cs16 only for now
+    with open(file_path, 'rb') as f:
+        while True:
+            raw_bytes = f.read(chunk_size_bytes)
+            if not raw_bytes:
+                break
+
+            raw = np.frombuffer(raw_bytes, dtype=np.int16)
+            complex_samples = raw.astype(np.float32).view(np.complex64)
+            complex_samples /= 32768.0
+
+            handler(complex_samples)

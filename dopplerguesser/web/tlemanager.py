@@ -4,15 +4,18 @@ import zipfile
 from io import BytesIO
 
 
-def update_tles(sources=['celestrak', 'space-track', 'classified', 'from_file'],
+def update_tles(sources=['celestrak', 'retlector', 'space-track', 'classified', 'from_file'],
                 space_track_credentials=None, file_path=None):
-    celestraksource, spacetracksource, classifiedsource, customsource = None, None, None, None
+    celestraksource, retlectorsource, spacetracksource, classifiedsource, customsource = None, None, None, None, None
     urlcelestrak = "https://celestrak.org/NORAD/elements/gp.php?GROUP=active"
+    urlretlector = "https://retlector.eu/tle/active"
     urlst = 'https://www.space-track.org/basicspacedata/query/class/gp/format/3le/decay_date/null-val/epoch/%3Enow-14/'
     urlclassified = 'https://mmccants.org/tles/classfd.zip'
     try:
         if 'celestrak' in sources:
             celestraksource = requests.get(urlcelestrak).text.strip().split("\n")
+        if 'retlector' in sources:
+            retlectorsource = requests.get(urlretlector).text.strip().split("\n")
         if 'space-track' in sources and space_track_credentials is not None:
             with requests.session() as session:
                 login_url = "https://www.space-track.org/ajaxauth/login"
@@ -36,7 +39,7 @@ def update_tles(sources=['celestrak', 'space-track', 'classified', 'from_file'],
                 if len(file_source) >= 3:
                     customsource = file_source
         tles = {}
-        for source in [celestraksource, spacetracksource, classifiedsource, customsource]:
+        for source in [celestraksource, retlectorsource, spacetracksource, classifiedsource, customsource]:
             if source is not None:
                 for i in range(0, len(source), 3):
                     tle = source[i:i+3]

@@ -1,9 +1,8 @@
 import dearpygui.dearpygui as dpg
-import os
 import threading
 import time
 from datetime import datetime
-from dopplerguesser.script_control.runner import FlowgraphRunner
+from dopplerguesser.script_control.runner import DPLLRunner
 from dopplerguesser.misc.rigctl_query import query_rigctl
 from dopplerguesser.misc.constants import C
 from dopplerguesser.config import config
@@ -32,12 +31,11 @@ class LiveViewController:
         self.prediction_observer = None
         self.update_interval = 5
         self.fallback_sample_rate = 2e6
+        self.first_reception_time = 0  # caching, runner's still the default
 
     def start_monitoring(self):
         if self.running:
             return
-
-        correct_iq = dpg.get_value("chk_live_dc_spike")
 
         try:
             freq, sr = query_rigctl()
@@ -49,13 +47,18 @@ class LiveViewController:
             dpg.set_value("txt_center_freq", "Central Frequency (Hz): Error/Unknown")
             sample_rate = self.fallback_sample_rate
 
+        bw = int(dpg.get_value("combo_bw_lv"))
+        use_fft = dpg.get_value("cb_use_fft_lv")
+
         params = {
             "s": sample_rate,
-            "d": int(correct_iq)
+            "sample_format": "cs16",
+            "center_freq": self.center_freq,
+            "bw": bw,
+            "use_fft_freq_find": use_fft
         }
 
-        script_path = os.path.abspath(os.path.join("gr_scripts", "pll_estimator.py"))
-        self.runner = FlowgraphRunner(script_path, port=12346, params=params)
+        self.runner = DPLLRunner(port=12345, params=params)
         self.plot_x = []
         self.plot_y = []
         dpg.configure_item("live_doppler_series", x=[], y=[])
@@ -63,6 +66,7 @@ class LiveViewController:
         self.runner.start(on_data_callback=self.handle_data)
         self.running = True
 
+        dpg.configure_item("cb_use_fft_lv", enabled=False)
         dpg.configure_item("btn_live_connect", label="Disconnect", callback=stop_live_view)
 
     def stop_monitoring(self):
@@ -70,9 +74,17 @@ class LiveViewController:
             self.runner.stop()
             self.runner = None
         self.running = False
+        dpg.configure_item("cb_use_fft_lv", enabled=True)
         dpg.configure_item("btn_live_connect", label="Connect", callback=start_live_view)
 
+    def set_bw(self, sender, app_data, user_data):
+        if self.runner and self.runner.is_running():
+            self.runner.set_bandwidth(int(app_data))
+
     def handle_data(self, data_list):
+        if self.runner and self.runner.first_reception_time and not self.first_reception_time:
+            self.first_reception_time = self.runner.first_reception_time
+
         for sec, val in data_list:
             self.plot_x.append(sec)
             self.plot_y.append(val)
@@ -118,11 +130,11 @@ class LiveViewController:
             top_candidate = "unknown"
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"{top_candidate}_{timestamp}_doppler_data.csv"
-        first_reception_time = self.runner.first_reception_time if self.runner else 0
+        self.first_reception_time = self.runner.first_reception_time if self.runner else 0
         with open(filename, "w") as f:
             f.write("Time(s),DopplerOffset(Hz)\n")
             for x, y in zip(self.plot_x, self.plot_y):
-                absolute_time = x + first_reception_time
+                absolute_time = x + self.first_reception_time
                 f.write(f"{absolute_time},{y}\n")
         print(f"Live doppler data saved to {filename}")
 
@@ -300,9 +312,12 @@ class LiveViewController:
                 sat, rmse = self.prediction_results[i]
                 dpg.set_value(f"prediction_sat_{i}", sat.satellite.name)
                 dpg.set_value(f"prediction_rmse_{i}", f"{rmse:.2f}")
+                norad_id = sat.satellite.model.satnum
+                dpg.set_value(f"prediction_sat_{i}_tooltip", f"NORAD ID: {norad_id}")
             else:
                 dpg.set_value(f"prediction_sat_{i}", "—")
                 dpg.set_value(f"prediction_rmse_{i}", "—")
+                dpg.set_value(f"prediction_sat_{i}_tooltip", "No data")
 
 
 _live_controller = LiveViewController()
@@ -319,13 +334,23 @@ def stop_live_view(sender, app_data, user_data):
 def draw_live_view_tab():
     with dpg.tab(label="Live View"):
         with dpg.collapsing_header(label="Signal Input", default_open=True):
-            dpg.add_text("Connect to your SDR and start receiving live data.")
-            dpg.add_text("Ensure rigctl server and IQ Exporter are running")
             dpg.add_button(label="Connect", tag="btn_live_connect", width=-1, callback=start_live_view)
+            with dpg.tooltip("btn_live_connect"):
+                dpg.add_text("Connect to your SDR and start \nreceiving live data.")
+                dpg.add_text("Ensure rigctl server and \nIQ Exporter are running")
 
             dpg.add_separator()
             dpg.add_text("Central Frequency (Hz): N/A", tag="txt_center_freq")
-            dpg.add_checkbox(label="Remove DC Spike", tag="chk_live_dc_spike", default_value=True)
+
+            dpg.add_checkbox(label="use FFT-based frequency finding", tag="cb_use_fft_lv", default_value=True)
+            with dpg.tooltip("cb_use_fft_lv"):
+                dpg.add_text("works best when carriers are present")
+
+            bw_list = [b.strip() for b in config["pll_bandwidths"].split(",")]
+            default_bw = bw_list[2] if len(bw_list) > 2 else bw_list[0]
+            dpg.add_text("PLL Bandwidth (Hz):")
+            dpg.add_combo(bw_list, tag="combo_bw_lv", default_value=default_bw,
+                          callback=_live_controller.set_bw, width=-1)
 
             dpg.add_spacer(height=5)
             dpg.add_text("Live Readings:")
@@ -338,7 +363,7 @@ def draw_live_view_tab():
                 dpg.add_text("0.0 m/s", tag="live_velocity_text", color=(100, 255, 255))
 
         with dpg.collapsing_header(label="Predict", default_open=True):
-            dpg.add_text('Confirm PLL is locked and doppler readings are stable before predicting.', wrap=350)
+            dpg.add_text('Confirm PLL is locked and doppler readings are stable before predicting.', wrap=300)
             dpg.add_button(label="Start Predicting", width=-1, tag="btn_predict",
                            callback=lambda: _live_controller.run_prediction())
             dpg.add_button(label="Stop", width=-1, tag="btn_stop_predict",
@@ -356,6 +381,8 @@ def draw_live_view_tab():
                 for i in range(5):
                     with dpg.table_row():
                         dpg.add_text("—", tag=f"prediction_sat_{i}")
+                        with dpg.tooltip(f"prediction_sat_{i}"):
+                            dpg.add_text("No data", tag=f"prediction_sat_{i}_tooltip")
                         dpg.add_text("—", tag=f"prediction_rmse_{i}")
 
         with dpg.collapsing_header(label="Doppler Curve", default_open=True):
