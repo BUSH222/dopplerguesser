@@ -84,7 +84,7 @@ class LiveViewController:
     def handle_data(self, data_list):
         if self.runner and self.runner.first_reception_time and not self.first_reception_time:
             self.first_reception_time = self.runner.first_reception_time
-            
+
         for sec, val in data_list:
             self.plot_x.append(sec)
             self.plot_y.append(val)
@@ -130,7 +130,7 @@ class LiveViewController:
             top_candidate = "unknown"
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"{top_candidate}_{timestamp}_doppler_data.csv"
-        first_reception_time = self.runner.first_reception_time if self.runner else 0
+        self.first_reception_time = self.runner.first_reception_time if self.runner else 0
         with open(filename, "w") as f:
             f.write("Time(s),DopplerOffset(Hz)\n")
             for x, y in zip(self.plot_x, self.plot_y):
@@ -334,7 +334,6 @@ def stop_live_view(sender, app_data, user_data):
 def draw_live_view_tab():
     with dpg.tab(label="Live View"):
         with dpg.collapsing_header(label="Signal Input", default_open=True):
-            
             dpg.add_button(label="Connect", tag="btn_live_connect", width=-1, callback=start_live_view)
             with dpg.tooltip("btn_live_connect"):
                 dpg.add_text("Connect to your SDR and start \nreceiving live data.")
@@ -346,11 +345,12 @@ def draw_live_view_tab():
             dpg.add_checkbox(label="use FFT-based frequency finding", tag="cb_use_fft_lv", default_value=True)
             with dpg.tooltip("cb_use_fft_lv"):
                 dpg.add_text("works best when carriers are present")
-            
+
             bw_list = [b.strip() for b in config["pll_bandwidths"].split(",")]
             default_bw = bw_list[2] if len(bw_list) > 2 else bw_list[0]
             dpg.add_text("PLL Bandwidth (Hz):")
-            dpg.add_combo(bw_list, tag="combo_bw_lv", default_value=default_bw, callback=_live_controller.set_bw, width=-1)
+            dpg.add_combo(bw_list, tag="combo_bw_lv", default_value=default_bw,
+                          callback=_live_controller.set_bw, width=-1)
 
             dpg.add_spacer(height=5)
             dpg.add_text("Live Readings:")

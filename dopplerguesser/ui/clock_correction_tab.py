@@ -172,12 +172,12 @@ def draw_clock_correction_tab():
             dpg.add_checkbox(label="use FFT-based frequency finding", tag="cb_use_fft_cc", default_value=True)
             with dpg.tooltip("cb_use_fft_cc"):
                 dpg.add_text("works best when carriers are present")
-            
+
             bw_list = [b.strip() for b in config["pll_bandwidths"].split(",")]
             default_bw = bw_list[2] if len(bw_list) > 2 else bw_list[0]
             dpg.add_text("PLL Bandwidth (Hz):")
             dpg.add_combo(bw_list, tag="combo_bw_cc", default_value=default_bw, callback=_controller.set_bw)
-            
+
             dpg.add_spacer(height=5)
             dpg.add_text("Clock Readings:")
 
