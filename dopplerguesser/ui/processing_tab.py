@@ -96,10 +96,11 @@ class ProcessingViewController:
 
             # overrides
             if dpg.get_value("processing_override_start_time"):
-                print('Applying start time override')
+                original_t_start = self.plot_x[0]
                 prediction_t_start = float(dpg.get_value("processing_override_start_time"))
+                time_offset = prediction_t_start - original_t_start
                 for i in range(len(self.plot_x)):
-                    self.plot_x[i] = prediction_t_start + i
+                    self.plot_x[i] += time_offset
             if dpg.get_value("processing_override_lat")\
                 and dpg.get_value("processing_override_lon")\
                     and dpg.get_value("processing_override_alt"):
@@ -302,7 +303,7 @@ def draw_processing_tab():
             dpg.add_input_text(tag="processing_override_lat", default_value="", width=-1)
             dpg.add_input_text(tag="processing_override_lon", default_value="", width=-1)
             dpg.add_input_text(tag="processing_override_alt", default_value="", width=-1)
-            dpg.add_text("Override start timestamp (unix seconds)")
+            dpg.add_text("Override start timestamp (unix seconds, local time)")
             dpg.add_input_text(tag="processing_override_start_time", default_value="", width=-1)
         with dpg.collapsing_header(label="Results", default_open=True):
             dpg.add_button(label="Predict", width=-1, tag="btn_predict_processing",

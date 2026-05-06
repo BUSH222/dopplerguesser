@@ -30,12 +30,100 @@ It is designed to work in conjunction with [SDR++](https://github.com/AlexandreR
 - [Python 3.13+](https://www.python.org/downloads/)
 
 ### Installation
-1) Clone this repository:  
-`git clone https://github.com/BUSH222/dopplerguesser`
-2) Navigate to the project root using `cd /path/to/dopplerguesser` and create a virtual environment using `python3 -m venv venv` (or `python -m venv venv` on Windows)
-3) Activate the venv using `source /venv/bin/activate` on MacOS/Linux (or `venv\Scripts\activate` on Windows)
-4) Install the required packages: `pip install -r requirements.txt`
-5) Start the application using `python3 main.py`
+#### MacOS/Linux
+1. Clone the repository
+```bash
+git clone https://github.com/BUSH222/dopplerguesser
+cd dopplerguesser
+```
+
+2. Create a virtual environment
+```bash
+python3 -m venv venv
+```
+
+3. Activate the virtual environment
+```bash
+source venv/bin/activate
+```
+
+4. Upgrade pip (recommended)
+```bash
+pip install --upgrade pip
+```
+
+5. Install dependencies
+```bash
+pip install -r requirements.txt
+```
+
+6. Build the C++ extension
+```bash
+python3 setup.py build_ext --inplace
+```
+
+> If this step fails, ensure you have a compiler installed:
+>
+> * macOS: `xcode-select --install`
+> * Linux: install `build-essential` (Debian/Ubuntu)
+
+7. Run the application
+
+```bash
+python3 main.py
+```
+
+#### Windows
+1. Clone the repository
+```bat
+git clone https://github.com/BUSH222/dopplerguesser
+cd dopplerguesser
+```
+
+### 2. Create a virtual environment
+```bat
+python -m venv venv
+```
+
+### 3. Activate the virtual environment
+```bat
+venv\Scripts\activate
+```
+
+> If using PowerShell:
+```powershell
+venv\Scripts\Activate.ps1
+```
+
+> If activation is blocked, run:
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+```
+
+### 4. Upgrade pip (recommended)
+```bat
+python -m pip install --upgrade pip
+```
+
+### 5. Install dependencies
+```bat
+pip install -r requirements.txt
+```
+
+### 6. Build the C++ extension
+```bat
+python setup.py build_ext --inplace
+```
+
+> Requirements for this step:
+>
+> * Install **Microsoft C++ Build Tools** (from Visual Studio Installer)
+> * Make sure “Desktop development with C++” is selected
+
+### 7. Run the application
+```bat
+python main.py
+```
 
 ### Initial Configuration
 1) Navigate to the settings tab in the application.

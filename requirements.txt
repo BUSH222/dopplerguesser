@@ -1,5 +1,6 @@
 dearpygui==2.1.1
-numpy==2.4.2
-Requests==2.32.5
+numpy==2.4.4
+pybind11==3.0.4
+Requests==2.33.1
+setuptools==82.0.1
 skyfield==1.54
-pybind11
