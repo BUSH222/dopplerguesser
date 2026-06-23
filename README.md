@@ -289,11 +289,13 @@ All the simplified models can be replaced with more precise but computationally 
 ### 4. Candidate selection
 The Celestrak API currently provides 15000 TLEs for different satellites. Even with all the optimizations described above, propagating all these TLEs will take way too long. So, to reduce computational load some filters are applied. All of these filters are toggleable in application settings.
 
-1. **Geostationary Filter:** Reject satellites with $n < 6$ revolutions per day. This project focuses on LEO and MEO satellites, with clearly observable doppler shift over short periods of time to mitigate the SDR receiver's clock drifting.
-2. **HEO Filter:** Reject satellites with eccentricity $e > 0.25$ (optional)
-3. **Visibility Filter:** Require elevation angle at $t_0$ $\theta_{\text{el}} > \theta_{\text{min}}$ (default 0°)
-4. **Constellation Filter:** Exclude specified mega-constellations (e.g., Starlink, OneWeb). This filter alone eliminates 2/3 of the satellites provided by Celestrak.
-5. **Doppler Pre-filter:** Reject if $|\Delta f_{\text{predicted}}(t_0) - \Delta f_{\text{observed}}(t_0)| > \epsilon$ (default threshold $\epsilon = 10000$ Hz). This helps eliminate descending satellites when the target is ascending, for example. However, if the tuning is imprecise this filter can accidentally cut the target.
+1. **Debris Filter:** Exclude satellites with names containing "deb", "rb", or "r/b" (case-insensitive). This filters out known debris and rocket bodies to focus on functional satellites.
+2. **Epoch Filter:** Reject satellites with TLE epoch older than a specified age (default: 14 days). Older TLEs are less accurate for propagation.
+3. **Geostationary Filter:** Reject satellites with $n < 6$ revolutions per day. This project focuses on LEO and MEO satellites, with clearly observable doppler shift over short periods of time to mitigate the SDR receiver's clock drifting.
+4. **HEO Filter:** Reject satellites with eccentricity $e > 0.25$ (optional)
+5. **Visibility Filter:** Require elevation angle at $t_0$ $\theta_{\text{el}} > \theta_{\text{min}}$ (default 0°)
+6. **Constellation Filter:** Exclude specified mega-constellations (e.g., Starlink, OneWeb). This filter alone eliminates 2/3 of the satellites provided by Celestrak.
+7. **Doppler Pre-filter:** Reject if $|\Delta f_{\text{predicted}}(t_0) - \Delta f_{\text{observed}}(t_0)| > \epsilon$ (default threshold $\epsilon = 2000$ Hz). This helps eliminate descending satellites when the target is ascending, for example. However, if the tuning is imprecise this filter can accidentally cut the target.
 The values used in the filters are design choices adapted for S-band. More rigorous testing is required to justify those values.
 
 ### 5. Candidate Scoring
@@ -311,7 +313,7 @@ $$ \tilde{f}_{\text{pred},i} = f_{\text{pred},i} - \bar{f}_{\text{pred}} $$
 
 $$ \text{RMSE} = \sqrt{\frac{1}{N}\sum_{i=1}^{N} (\tilde{f}_{\text{obs},i} - \tilde{f}_{\text{pred},i})^2} $$
 
-Candidates are ranked by ascending RMSE. The top candidate is the most likely match.
+Candidates are ranked by ascending RMSE. The top candidate is the most likely match. The correct candidate has a RMSE that is usually several times lower than the rest.
 
 ## License
 [MIT License](LICENSE)

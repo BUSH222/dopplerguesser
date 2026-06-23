@@ -194,11 +194,6 @@ class LiveViewController:
                 satellites = filter_debris(satellites)
                 print(f"After debris filter: {len(satellites)}")
 
-            # Epoch filter
-            if config["filter_by_epoch"] and config["max_tle_age_days"] > 0:
-                satellites = filter_by_epoch(satellites, maxage=config["max_tle_age_days"])
-                print(f"After epoch filter: {len(satellites)}")
-
             # Constellation filter
             if config["filter_constellations"]:
                 constellations = [
@@ -209,6 +204,11 @@ class LiveViewController:
                 if constellations:
                     satellites = filter_constellations(satellites, constellations)
                     print(f"After constellation filter: {len(satellites)}")
+
+            # Epoch filter
+            if config["filter_by_epoch"] and config["max_tle_age_days"] > 0:
+                satellites = filter_by_epoch(satellites, maxage=config["max_tle_age_days"])
+                print(f"After epoch filter: {len(satellites)}")
 
             # Geostationary filter
             satellites = filter_geostationary(satellites)

@@ -7,6 +7,26 @@ from dopplerguesser.misc.timetools import unix_to_skyfield
 from datetime import datetime, timezone
 
 
+def _extract_epoch_jd_from_tle(tle_line1: str) -> float:
+    epoch_str = tle_line1[18:32]
+    year = int(epoch_str[0:2])
+    day_of_year = float(epoch_str[2:14])
+
+    if year < 57:
+        year += 2000
+    else:
+        year += 1900
+
+    y = year - 1
+    a = y // 100
+    b = 2 - a + a // 4
+
+    jd0 = int(365.25 * (y + 4716)) + int(30.6001 * 14) + 1 + b - 1524.5
+    jd = jd0 + day_of_year
+    
+    return jd
+
+
 def filter_debris(satellites: list[Satellite]):
     exp = re.compile(r'\b(?:deb|r/?b)\b', re.IGNORECASE)
     filtered = []
@@ -19,12 +39,27 @@ def filter_debris(satellites: list[Satellite]):
 
 
 def filter_by_epoch(satellites: list[Satellite], maxage=14):
+    """Filter satellites by TLE epoch age using efficient Julian date comparison."""
     now = datetime.now(tz=timezone.utc)
+    year = now.year
+    month = now.month
+    day = now.day + now.hour / 24.0 + now.minute / 1440.0 + now.second / 86400.0
+    
+    a = (14 - month) // 12
+    y = year + 4800 - a
+    m = month + 12 * a - 3
+    jdn = day + (153 * m + 2) // 5 + 365 * y + y // 4 - y // 100 + y // 400 - 32045
+    jd_now = jdn - 0.5
+    
+    max_age_jd = maxage
+    
     filtered = []
     for sat in satellites:
-        diff = now - sat.satellite.epoch.utc_datetime()
-        if abs(diff.days) <= maxage:
+        jd_epoch = _extract_epoch_jd_from_tle(sat.tle_line1)
+        age_jd = abs(jd_now - jd_epoch)
+        if age_jd <= max_age_jd:
             filtered.append(sat)
+    
     return filtered
 
 
