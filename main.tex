@@ -1,68 +1,28 @@
-\documentclass[12pt,a4paper]{article}
+\documentclass[sn-mathphys-num]{sn-jnl}
 
-\usepackage[T1]{fontenc}
-\usepackage[utf8]{inputenc}
-\usepackage[english]{babel}
-
-\usepackage{amsmath,amssymb}
-\usepackage{geometry}
-\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
 \usepackage{booktabs}
-\usepackage{caption}
-\usepackage{setspace}
-\usepackage{parskip}
-\usepackage{hyperref}
-
-\usepackage[
-    backend=biber,
-    style=numeric,
-    sorting=none
-]{biblatex}
-
 \usepackage{csquotes}
-
-\addbibresource{references.bib}
 
 \begin{document}
 
-\begin{titlepage}
-\begin{center}
-\graphicspath{./}
+\title{A Method for Passive Identification of Spacecraft Using
+Doppler-Based Trajectory Matching}
 
-Ministry of Science and Higher Education of the Russian Federation
+\author*[1]{\fnm{Fedor Ivanovich} \sur{Vtorov}}
+\affil[1]{
+  \orgdiv{Department of Automated Control Systems},
+  \orgname{National University of Science and Technology MISIS},
+  \city{Moscow},
+  \country{Russia}
+}
 
-\vspace{0.5cm}
+\abstract{TODO}
 
-Federal State Autonomous Educational Institution of Higher Education
+\keywords{TODO}
 
-National University of Science and Technology "MISIS"
-
-Institute of Computer Science (ICS)
-
-Department of Automated Control Systems (ACS)
-
-\vspace{3cm}
-
-Research Paper
-
-\vspace{0.5cm}
-
-A Method for Passive Identification of Spacecraft Using
-
-Doppler-Based Trajectory Matching
-
-\vfill
-
-Author
-
-Fedor Ivanovich Vtorov
-
-\vfill
-
-Moscow --- 2026
-
-\end{center}
-\end{titlepage}
+\maketitle
 
 \tableofcontents
 \newpage
@@ -100,7 +60,7 @@ To achieve the stated objective, the following tasks are addressed:
     \item Experimental validation of the proposed method using real-world observations in the VHF, UHF, L-, and S-bands.
 \end{enumerate}
 
-The proposed method can be implemented on consumer-grade SDR hardware, making passive satellite identification broadly accessible for scientific, engineering, and regulatory use."
+The proposed method can be implemented on consumer-grade SDR hardware, making passive satellite identification broadly accessible for scientific, engineering, and regulatory use.
 
 % ====================================================================
 \section{Theoretical Foundations of Passive Doppler Satellite Identification}
@@ -578,7 +538,7 @@ A significant functional extension would be support for burst transmissions. The
 A promising direction for improving identification robustness is the inclusion of antenna pointing angles as an additional observable. If the antenna direction corresponding to the signal maximum is recorded throughout a pass, the resulting angular trajectory can serve as an independent constraint during candidate matching: satellites whose predicted angular trajectory diverges from the observed one can be rejected even when their Doppler RMSE is low. Combining Doppler and angular observables could substantially reduce the probability of false identification in high orbital-density environments.
 
 % =================================================================
-\printbibliography[heading=bibintoc, title={References}]
+\bibliography{references}
 
 
 \end{document}
