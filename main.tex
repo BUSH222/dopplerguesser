@@ -1,4 +1,4 @@
-\documentclass[sn-mathphys-num]{sn-jnl}
+\documentclass[sn-basic]{sn-jnl}
 
 \usepackage{amsmath}
 \usepackage{amssymb}
@@ -537,6 +537,63 @@ A significant functional extension would be support for burst transmissions. The
 
 A promising direction for improving identification robustness is the inclusion of antenna pointing angles as an additional observable. If the antenna direction corresponding to the signal maximum is recorded throughout a pass, the resulting angular trajectory can serve as an independent constraint during candidate matching: satellites whose predicted angular trajectory diverges from the observed one can be rejected even when their Doppler RMSE is low. Combining Doppler and angular observables could substantially reduce the probability of false identification in high orbital-density environments.
 
+% =================================================================
+\section*{List of abbreviations}
+\begin{description}
+    \item [ADS-B] Automatic Dependent Surveillance-Broadcast
+    \item [API] Application Programming Interface
+    \item [CCSDS] Consultative Committee for Space Data Systems
+    \item [FFT] Fast Fourier Transform
+    \item [GCRS] Geocentric Celestial Reference System
+    \item [GEO] Geostationary Earth Orbit
+    \item [GPS] Global Positioning System
+    \item [GPSDO] GPS-Disciplined Oscillator
+    \item [IQ] In-phase and Quadrature
+    \item [ITRS] International Terrestrial Reference System
+    \item [LEO] Low Earth Orbit
+    \item [LHCP] Left-Hand Circular Polarisation
+    \item [LNA] Low-Noise Amplifier
+    \item [NCO] Numerically Controlled Oscillator
+    \item [NORAD] North American Aerospace Defense Command
+    \item [OMM] Orbit Mean-Element Message
+    \item [PLL] Phase-Locked Loop
+    \item [RFF] Radio-Frequency Fingerprinting
+    \item [RHCP] Right-Hand Circular Polarisation
+    \item [RMSE] Root Mean Square Error
+    \item [SATCAT] Satellite Catalog Number
+    \item [SAW] Surface Acoustic Wave
+    \item [SDR] Software-Defined Radio
+    \item [SGP4] Simplified General Perturbations Model 4
+    \item [SSN] Space Surveillance Network
+    \item [TCP] Transmission Control Protocol
+    \item [TCXO] Temperature-Compensated Crystal Oscillator
+    \item [TLE] Two-Line Element (set)
+    \item [UHF] Ultra-High Frequency
+    \item [USRP] Universal Software Radio Peripheral
+    \item [VHF] Very-High Frequency
+\end{description}
+% =================================================================
+\bmhead{Declarations}
+
+\bmhead{Availability of data and materials}
+The source code of the DopplerGuesser system developed during this
+study is publicly available at https://github.com/BUSH222/dopplerguesser.
+The raw IQ recordings and frequency time-series files supporting the
+conclusions of this article are available from the corresponding author
+on reasonable request.
+
+\bmhead{Competing interests}
+The author declares that he has no competing interests.
+
+\bmhead{Funding}
+Not applicable.
+
+\bmhead{Authors' contributions}
+F.I.V. conceived the method, implemented the software, conducted all
+observations, performed the analysis, and wrote the manuscript.
+
+\bmhead{Acknowledgements}
+Not applicable.
 % =================================================================
 \bibliography{references}
 
