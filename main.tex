@@ -20,7 +20,7 @@ Doppler-Based Trajectory Matching}
 
 \abstract{TODO}
 
-\keywords{TODO}
+\keywords{Passive satellite identification, Doppler frequency shift, Single-pass identification, Software-defined radio, Trajectory matching, Space situational awareness}
 
 \maketitle
 
@@ -79,7 +79,7 @@ The Doppler frequency shift arises from the relative motion of a radiation sourc
 \noindent
 where $f_{\mathrm{obs}}$ is the observed frequency, $f_{\mathrm{sat}}$ is the transmitter frequency, $v_0$ is the observer speed toward the source, $v_s$ is the source speed toward the observer, and $c$ is the speed of light. Positive velocities correspond to mutual approach.
 
-For near-Earth satellites, since the relative velocity is well below the speed of light, $v_{\mathrm{rel}} \ll c$, the first-order approximation can be used:
+For near Earth satellites, since the relative velocity is well below the speed of light, $v_{\mathrm{rel}} \ll c$, the first-order approximation can be used:
 
 \begin{equation}
     v_{\mathrm{rel}} \approx \left(\frac{f_{\mathrm{obs}}}{f_{\mathrm{sat}}} - 1\right)c
@@ -94,7 +94,7 @@ The neglected second-order term, arising from a Taylor expansion of Equation~\re
     \label{eq:second-order-term}
 \end{equation}
 
-Even at the upper end of LEO velocities, where $v_{\mathrm{rel}} \approx 1.2 \times 10^{4}\ \mathrm{m/s}$, the resulting error is on the order of $10^{-9}$. For an S-band signal at 2.25 GHz this amounts to roughly 3 Hz, which is well below the frequency errors typical of consumer-grade SDR receivers~\citep{bednarz2024}.
+Even at the upper end of LEO velocities, where $v_{\mathrm{rel}} \approx 1.2 \times 10^{4}\ \mathrm{m/s}$, the resulting error is on the order of $10^{-9}$. For an S-band signal at 2.25 GHz this is roughly 3 Hz, which is well below the frequency errors typical of consumer-grade SDR receivers~\citep{bednarz2024}.
 
 \subsection{Frequency Extraction from SDR Signals}
 \label{subsec:freq-extraction}
@@ -105,7 +105,7 @@ Estimating the instantaneous frequency of a signal from complex IQ samples is a 
 \subsection{Orbit Propagation Models}
 \label{subsec:orbit-models}
 
-The standard format for orbital data on objects tracked by space surveillance networks is the Two-Line Element set (TLE), distributed by organizations such as CelesTrak~\citep{kelso_ssn}. Orbit Mean-Element Messages (OMMs) defined by the Consultative Committee for Space Data Systems (CCSDS) provide a modern, machine-readable representation of the same mean orbital elements and associated metadata as TLEs, while avoiding the ambiguities and formatting limitations of the legacy fixed-width TLE format~\citep{ccsds_odm}. Orbit propagation from both TLE and OMM data is performed using the SGP4 analytical model, which accounts for the principal perturbations acting on a satellite and is the de facto standard in space-object tracking~\citep{vallado2006}. Alongside SGP4, propagation of the orbital state vector may be performed via Lagrange coefficients (the F\&G functions) which yield the satellite position and velocity at an arbitrary epoch analytically within the two-body framework~\citep{sharifi2011, seif2017}. The use of these tools to generate predicted Doppler signatures is described in Section~\ref{subsec:predicted-trajectories}.
+The standard format for orbital data on objects tracked by space surveillance networks is the Two-Line Element set (TLE), distributed by organizations such as CelesTrak~\citep{kelso_ssn}. Orbit Mean-Element Messages (OMMs) defined by the Consultative Committee for Space Data Systems (CCSDS) provide a modern, machine-readable representation of the same mean orbital elements and associated metadata as TLEs, while avoiding the ambiguities and formatting limitations of the TLE format~\citep{ccsds_odm}. Orbit propagation from both TLE and OMM data is performed using the SGP4 analytical model, which accounts for the principal perturbations acting on a satellite and is the de facto standard in space-object tracking~\citep{vallado2006}. Due to the simplicity and availability of the TLE element sets during the development stages of the project, the developed program uses TLEs in favor of OMMs. Alongside SGP4, propagation of the orbital state vector may be performed via Lagrange coefficients (the F\&G functions) which yield the satellite position and velocity at an arbitrary epoch analytically within the two-body framework~\citep{sharifi2011, seif2017}. The use of these tools to generate predicted Doppler signatures is described in Section~\ref{subsec:predicted-trajectories}.
 
 % ==========================================================
 \section{Method for Passive Satellite Identification Based on Doppler Matching}
@@ -116,9 +116,9 @@ The standard format for orbital data on objects tracked by space surveillance ne
 
 The system operates in two modes: real-time and post-processing. In real-time mode, data are received directly from the SDR receiver via SDR++, a cross-platform software-defined radio application~\citep{sdrpp}. In post-processing mode, the input is a frequency time-series file produced during a prior observation, with the option to override timestamps and observer coordinates. Since the two modes differ only in how input data are supplied, the following describes the common processing pipeline, illustrated in Figure~\ref{fig:pipeline}.
 
-In the first stage, complex IQ samples are sent from the IQ Exporter module of SDR++ to the application over TCP and accumulated in an internal buffer. If the signal contains a distinct carrier, an optional initial frequency estimate is computed via the Fast Fourier Transform (FFT) and used to initialise the numerically controlled oscillator (NCO). If the FFT step is skipped, the NCO is initialised with zero offset relative to the receiver center frequency. The signal is then tracked by a phase-locked loop (PLL). The PLL output samples are averaged over one-second intervals to form an instantaneous frequency time series.
+In the first stage, complex IQ samples are sent from the IQ Exporter module of SDR++ to the application over TCP and accumulated in an internal buffer. If the signal contains a clear carrier, an optional initial frequency estimate is computed via the Fast Fourier Transform (FFT) and used to initialise the numerically controlled oscillator (NCO). If this FFT step is skipped, the NCO is initialised with zero offset relative to the center frequency of the VFO. The signal is then tracked by a phase-locked loop (PLL). The PLL output samples are averaged over one second intervals to form a frequency time series.
 
-At the same time, TLE sets are retrieved from a local database that is updated in advance to avoid exceeding external API rate limits. Based on the observed frequency at the initial epoch $t_0$ and specified spatiotemporal constraints, multi-stage candidate pre-filtering reduces the object set to a manageable size. Such filtering schemes are widely used in observation-correlation and hypothesis-space reduction problems~\citep{phillion2014}. For each candidate that passes filtering, SGP4 computes the satellite position and velocity at $t_0$, after which F\&G functions propagate the state to all subsequent observation epochs. The observer position in the GCRS frame at any epoch is obtained by rotating the ITRS vector by the angle corresponding to elapsed time. Predicted Doppler shifts are computed from the satellite-observer relative position vector. The observed and predicted series are independently centred by subtracting their respective means, and an RMSE value is computed for each candidate. The final candidate list is ranked in ascending order of RMSE.
+At the same time, TLE sets are retrieved from a local database that is updated in advance to avoid exceeding external API rate limits. Based on the observed frequency at the initial epoch $t_0$ and specified spatiotemporal constraints, multi-stage candidate pre-filtering reduces the object set to a manageable size. Such filtering schemes are widely used in observation-correlation and hypothesis-space reduction problems~\citep{phillion2014}. For each candidate that passes filtering, SGP4 computes the satellite position and velocity at $t_0$, after which F\&G functions propagate the state to all subsequent observation epochs. The observer position in the GCRS frame at any epoch is obtained by rotating the ITRS vector by the angle corresponding to elapsed time. Predicted Doppler shifts are computed from the satellite-observer relative position vector. The observed and predicted series are independently centerd by subtracting their respective means, and an RMSE value is computed for each candidate. The final candidate list is ranked in ascending order of RMSE.
 
 \begin{figure}[!htbp]
     \centering
@@ -136,7 +136,7 @@ At the same time, TLE sets are retrieved from a local database that is updated i
 
 Three software-defined radio receivers were used in the experimental study. The first is the LibreSDR B210 mini, based on the AD9361 transceiver, with a specified reference oscillator stability of 0.5 ppm. Its architecture is close to that of the USRP B200 mini, whose characteristics are studied in detail in the study by \citet{bednarz2024}. The second is the HackRF One (Clifford R10+ revision) fitted with an external temperature-compensated crystal oscillator (TCXO) specified at 0.1 ppm. The third is the RTL-SDR v3 with a specified oscillator stability of 1 ppm. The HackRF and the B210 mini were used interchangeably for VHF, UHF, L- and S-band observations, whereas the RTL-SDR v3 was used in the L band only. No quantitative comparison between receivers was performed within the scope of this work. A GPS-disciplined oscillator (GPSDO) was deliberately excluded from the setup, as one of the objectives of this work is to demonstrate the applicability of the method on widely available consumer hardware.
 
-The antenna front-ends varied by frequency band. In the VHF band a telescopic V-dipole antenna was used; in the UHF band a 7-element Yagi-Uda antenna with a folded dipole, tuned to approximately 430MHz, was used. Neither configuration included an external low-noise amplifier (LNA).
+The antenna front-ends varied by frequency band. In the VHF band a telescopic V-dipole antenna was used; in the UHF band a consumer-grade 7-element Yagi-Uda antenna with a folded dipole was used. Neither configuration included an external low-noise amplifier (LNA).
 
 For the L and S bands an identical reflector, a 0.9m offset parabolic dish (AX-OFFSET D90), was used with different feeds and amplifier chains. In the L band, a left-hand circularly polarised (LHCP) helical feed, designed using an online calculator~\citep{helix_calc}, was mounted at the focal point of the reflector. Due to polarisation reversal upon reflection from a parabolic surface~\citep{kraus2002}, the system provides effective reception of right-hand circularly polarised (RHCP) signals from the source side. The receiving chain comprised a two-stage LNA with a SAW filter optimised for 1690 MHz, followed by a broadband LNA based on the TQP3M9037 transistor. In the S-band, a separate LHCP helical feed designed by the same method was used together with the SeLNA v1 LNA~\citep{selna_v1}, a modified ADS-B LNA with replacement bandpass filters adapted for 2200-2300 MHz. The two receiving chains are shown in Figure~\ref{fig:rf_chains}.
 
@@ -164,7 +164,7 @@ None of these error sources is eliminated by hardware calibration in the present
 \subsubsection{IQ Data Stream and Pre-processing}
 \label{subsubsec:iq-preprocessing}
 
-Complex IQ samples are delivered to the application from the SDR++ IQ-Exporter module over TCP, with the application acting as client. Samples are transmitted in the \texttt{cs16} format (pairs of signed 16-bit integers encoding the I and Q quadrature components). The sample rate and centre frequency are queried dynamically from the SDR++ \texttt{rigctl} server module via the rigctl protocol, eliminating the need for manual configuration. Incoming samples are accumulated in a fixed-size internal ring buffer before being passed to subsequent processing stages. No additional filtering or decimation is applied at this stage. The full sample stream is forwarded as-is to the frequency estimation block.
+Complex IQ samples are sent to the application from the SDR++ IQ-Exporter module over TCP, with the application acting as client. Samples are transmitted in the \texttt{cs16} format (pairs of signed 16-bit integers encoding the I and Q quadrature components). The sample rate and center frequency are queried dynamically from the SDR++ \texttt{rigctl} server module via the rigctl protocol, eliminating the need for manual configuration. Incoming samples are accumulated in a fixed-size internal ring buffer before being passed to subsequent processing stages. No additional filtering or decimation is applied at this stage. The full sample stream is forwarded as-is to the frequency estimation block.
 
 
 \subsubsection{Initial Frequency Estimation via FFT}
@@ -178,14 +178,14 @@ Before the phase-locked loop is started, an optional initial frequency estimate 
 \end{equation}
 
 \noindent
-where $X[k]$ is the complex spectrum of the input sample block. If this step is skipped, for signals without a distinct carrier where peak-finding is not meaningful for example, the NCO is initialised with zero offset relative to the receiver centre frequency.
+where $X[k]$ is the complex spectrum of the input sample block. If this step is skipped, for signals without a distinct carrier where peak-finding is not meaningful for example, the NCO is initialised with zero offset relative to the receiver center frequency.
 
 \subsubsection{Signal Tracking via Phase-Locked Loop (PLL)}
 \label{subsubsec:pll-tracking}
 
-The primary tool for extracting the instantaneous signal frequency is a phase-locked loop implemented as a C++ module with a Python interface via pybind11. Unlike classical demodulation schemes, this implementation uses the PLL in frequency-estimation mode: the output is the current estimate of the instantaneous signal frequency rather than a recovered phase or demodulated data~\citep{guo2015, gao2016}.
+The primary tool for extracting the instantaneous signal frequency is a phase-locked loop implemented as a C++ module with a Python interface via pybind11. Unlike classical demodulation schemes, this implementation uses the PLL in frequency-estimation mode. Here the output is the current estimate of the instantaneous signal frequency rather than a recovered phase or demodulated data~\citep{guo2015, gao2016}.
 
-Before the loop is initialised, the maximum permissible frequency deviation from the centre frequency $f_{\max}$ is computed. This is the range within which the PLL can acquire and track the signal:
+Before the loop is initialised, the maximum permissible frequency deviation from the center frequency $f_{\max}$ is computed. This is the range within which the PLL can acquire and track the signal:
 
 \begin{equation}
     f_{\max} = \left(\frac{c + v_0}{c - v_s} - 1\right) \cdot f_{\mathrm{sat}} \cdot M
@@ -193,7 +193,7 @@ Before the loop is initialised, the maximum permissible frequency deviation from
 \end{equation}
 
 \noindent
-For the worst case (maximum Doppler effect), a satellite at 100 km altitude with $v_s \approx 7850$~m/s and an observer moving toward it at the Earth's equatorial rotation speed $v_0 \approx 465$~m/s,this simplifies to:
+For the worst case (maximum Doppler shift), a satellite at 100 km altitude with $v_s \approx 7850$~m/s and an observer moving toward it at the Earth's equatorial rotation speed $v_0 \approx 465$~m/s,this simplifies to:
 
 \begin{equation}
     f_{\max} \approx 2.8 \times 10^{-5} \cdot f_{\mathrm{sat}} \cdot M
@@ -203,7 +203,7 @@ For the worst case (maximum Doppler effect), a satellite at 100 km altitude with
 \noindent
 where $M > 1$ is a user-defined capture-range expansion factor that compensates for frequency tuning inaccuracy and reference-oscillator instability in both the receiver and transmitter.
 
-The key PLL parameter is the loop bandwidth, which governs the trade-off between acquisition speed and noise rejection. A wide bandwidth enables fast lock but requires a higher signal-to-noise ratio; a narrow bandwidth provides accurate tracking of a weak signal but slows initial acquisition~\citep{guo2015}. The implementation provides a set of pre-configured bandwidth values that the operator can switch during an observation. The typical strategy in the L and S bands is to use a 2000~Hz bandwidth for initial lock, then narrow to 300~Hz for fine tracking. In the VHF and UHF bands, proportionally smaller values were used, which empirically provided stable tracking.
+The key parameter of a PLL is the loop bandwidth, which determines the trade-off between signal acquisition speed and noise suppression. A wide bandwidth enables fast lock but requires a higher signal-to-noise ratio, whereas a narrow bandwidth provides accurate tracking of a weak signal but slows initial acquisition~\citep{guo2015}. The implementation provides a set of pre-configured bandwidth values that the operator can switch during an observation. The typical strategy in the L and S bands is to use a 2000Hz bandwidth for initial lock, then narrow to 300Hz for fine tracking. In the VHF and UHF bands, proportionally smaller values were used, which empirically provided stable tracking.
 
 The PLL output is subject to noise from phase jitter and dynamic tracking error, the dominant source of which is thermal noise in the receiving chain~\citep{kaplan2006}.
 
@@ -218,7 +218,7 @@ To suppress noise in the PLL output stream, a one-second averaging procedure is 
     \label{eq:averaging}
 \end{equation}
 
-The result is a time series $\{(N_j,\, \hat{f}(N_j))\}$ representing the Doppler signature of the observed signal sampled at one-second intervals, which serves as input to the identification algorithm described in Section~\ref{subsec:identification-algorithm}.
+The result is a time series $\{(N_j,\, \hat{f}(N_j))\}$ representing the Doppler signature of the observed signal sampled at one second intervals. This gets fed into the identification algorithm described in Section~\ref{subsec:identification-algorithm}.
 
 
 \subsection{Generation of Predicted Doppler Trajectories}
@@ -229,7 +229,7 @@ The result is a time series $\{(N_j,\, \hat{f}(N_j))\}$ representing the Doppler
 
 Two-Line Element sets are obtained from several configurable sources. The first is CelesTrak, which provides the active satellite catalogue through an open API~\citep{kelso_ssn}. The second is ReTLEctor, a lightweight proxy server that caches CelesTrak data to prevent rate-limit violations during bulk downloads. The third is Space-Track, the official catalogue of the US Space Forces Command, from which records with an epoch no older than 14 days and no decay date are requested. The fourth is the Mike McCants archive, which contains TLE data for satellites absent from official catalogues but identified through legitimate passive observations; this source does not redistribute classified data. Finally, a user-supplied plain-text file of TLE sets allows arbitrary orbital elements to be included optionally.
 
-The retrieved data is stored in a local plain-text database. When the same satellite appears in multiple sources, the entry with the most recent epoch is retained. The database is updated manually by the operator before each observing session. Local caching removes the dependency on external API availability at identification time and avoids latency from real-time network requests.
+The retrieved data is stored in a local database. When the same satellite appears in multiple sources, the entry with the most recent epoch is kept. The database is updated manually by the operator before each observing session. Local caching removes the dependency on external API availability at identification time and avoids latency from real-time network requests.
 
 
 \subsubsection{Orbit Propagation via SGP4 + F\&G Functions}
@@ -343,7 +343,7 @@ where a positive $\dot{\rho}$ corresponds to mutual approach. Using the first-or
     \label{eq:fpred}
 \end{equation}
 
-Because the exact transmitter carrier frequency $f_{\mathrm{sat}}$ is generally unknown, the absolute values of $f_{\mathrm{pred}}$ are not used directly in the matching algorithm. Instead, both the observed and predicted series are centred by subtracting their respective means, as described in Section~\ref{subsubsec:normalisation}.
+Because the exact transmitter carrier frequency $f_{\mathrm{sat}}$ is generally unknown, the absolute values of $f_{\mathrm{pred}}$ are not used directly in the matching algorithm. Instead, both the observed and predicted series are centerd by subtracting their respective means, as described in Section~\ref{subsubsec:normalisation}.
 
 
 \subsection{Satellite Identification Algorithm}
@@ -364,7 +364,7 @@ For the remaining objects, SGP4 is called once to compute the position and veloc
     \label{eq:doppler-prefilter}
 \end{equation}
 
-This filter is most effective when the signal centre frequency is precisely known. When the carrier frequency is unknown, its use is not recommended, as it risks incorrectly rejecting the true candidate. 
+This filter is most effective when the signal center frequency is precisely known. When the carrier frequency is unknown, its use is not recommended, as it risks incorrectly rejecting the true candidate. 
 
 \subsubsection{Trajectory Normalisation}
 \label{subsubsec:normalisation}
@@ -373,14 +373,14 @@ Direct comparison of the observed and predicted frequency series is not possible
 
 \begin{equation}
     \tilde{f}_{\mathrm{obs},i} = f_{\mathrm{obs},i} - \bar{f}_{\mathrm{obs}}
-    \label{eq:centre-obs}
+    \label{eq:center-obs}
 \end{equation}
 \begin{equation}
     \tilde{f}_{\mathrm{pred},i} = f_{\mathrm{pred},i} - \bar{f}_{\mathrm{pred}}
-    \label{eq:centre-pred}
+    \label{eq:center-pred}
 \end{equation}
 
-The centred series $\tilde{f}_{\mathrm{obs}}$ and $\tilde{f}_{\mathrm{pred}}$ retain only information about the shape of the Doppler curve, which is invariant to constant offsets of any origin. The operation also makes the method robust to imprecise receiver tuning. Formally, assuming:
+The centerd series $\tilde{f}_{\mathrm{obs}}$ and $\tilde{f}_{\mathrm{pred}}$ retain only information about the shape of the Doppler curve, which is invariant to constant offsets of any origin. The operation also makes the method robust to imprecise receiver tuning. Formally, assuming:
 
 \begin{equation}
     f_{\mathrm{obs}}(t) = f_D(t) + b + \epsilon(t)
@@ -402,7 +402,7 @@ because the constant term cancels exactly: $b - \bar{b} = 0$.
 \subsubsection{Matching Metric}
 \label{subsubsec:matching-metric}
 
-The proximity between the observed and predicted Doppler signatures is measured by the root mean square error (RMSE) of the centred series:
+The proximity between the observed and predicted Doppler signatures is measured by the root mean square error (RMSE) of the centerd series:
 
 \begin{equation}
     \mathrm{RMSE} = \sqrt{\frac{1}{N}\sum_{i=1}^{N}
@@ -449,7 +449,7 @@ Observations were conducted primarily in the evening, most often around sunset, 
 
 Before each observing session the operator manually updated the local TLE database from CelesTrak, ReTLEctor, and the Mike McCants archive. The last source was added after several early observations yielded no identification because the satellites in question were absent from the official catalogues.
 
-Once a candidate signal was detected, the antenna was pointed at the source manually using a tripod. In the UHF, L, and S bands, tracking throughout the pass was maintained by continuously adjusting the antenna direction against the signal level on the FFT display, with a drop in amplitude indicating pointing error. In the VHF band a fixed V-dipole antenna was used without mechanical tracking. The centre frequency of the IQ Exporter in SDR++ was set approximately to the observed signal with a downward correction for Doppler shift: since the signal frequency decreases on the descending portion of the pass, the tuning was placed slightly below the observed carrier. The FFT-based initial frequency estimation was enabled where needed. The PLL capture bandwidth was set to 1000-2000 Hz for initial lock, then narrowed to 300~Hz for fine tracking in the L and S bands; proportionally smaller values were used at lower frequencies.
+Once a candidate signal was detected, the antenna was pointed at the source manually using a tripod. In the UHF, L, and S bands, tracking throughout the pass was maintained by continuously adjusting the antenna direction against the signal level on the FFT display, with a drop in amplitude indicating pointing error. In the VHF band a fixed V-dipole antenna was used without mechanical tracking. The center frequency of the IQ Exporter in SDR++ was set approximately to the observed signal with a downward correction for Doppler shift: since the signal frequency decreases on the descending portion of the pass, the tuning was placed slightly below the observed carrier. The FFT-based initial frequency estimation was enabled where needed. The PLL capture bandwidth was set to 1000-2000 Hz for initial lock, then narrowed to 300~Hz for fine tracking in the L and S bands; proportionally smaller values were used at lower frequencies.
 
 A typical pass lasted approximately 5 minutes, though recorded passes ranged from 50 seconds to 10 minutes depending on maximum elevation and observing conditions. The identification algorithm described in Section~\ref{subsec:identification-algorithm} was run live during each pass.
 
@@ -571,6 +571,7 @@ A promising direction for improving identification robustness is the inclusion o
     \item [UHF] Ultra-High Frequency
     \item [USRP] Universal Software Radio Peripheral
     \item [VHF] Very-High Frequency
+    \item [VFO] Variable Frequency Oscillator
 \end{description}
 % =================================================================
 \bmhead{Declarations}
