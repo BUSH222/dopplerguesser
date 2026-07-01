@@ -1,0 +1,60 @@
+\documentclass[lineno,pdflatex,sn-basic,referee,]{sn-jnl}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+
+
+% this fixes the line numbering
+\makeatletter
+
+\AtBeginDocument{\unsetvruler}
+\makeatother
+
+\usepackage[switch]{lineno}
+\renewcommand\linenumberfont{\normalfont\tiny\sffamily}
+\AtBeginDocument{\linenumbers}
+\begin{document}
+% end of line numbering fix
+
+\title{A Method for Passive Identification of Spacecraft Using
+Doppler-Based Trajectory Matching}
+
+\author*[1]{\fnm{Fedor Ivanovich} \sur{Vtorov}}
+\affil[1]{
+  \orgdiv{Department of Automated Control Systems},
+  \orgname{National University of Science and Technology MISIS},
+  \city{Moscow},
+  \country{Russia}
+}
+
+\abstract{
+    This paper presents a passive method for identifying unknown spacecraft using the Doppler signature of a single satellite pass, requiring neither training data nor the precise knowledge of the transmitter carrier frequency. Doppler shifts are extracted from SDR IQ samples via a phase-locked loop and averaged into a one second time series. Candidates from an open Two-Line Element catalog are processed by a seven-stage filtering algorithm before predicted Doppler trajectories are generated using a computationally efficient combination of SGP4 propagation and F\&G (Lagrange coefficient) functions. Observed and predicted series are independently mean-centered to cancel unknown carrier offsets and SDR oscillator instability, and candidates are ranked by root-mean-square error. Using consumer-grade SDR receivers, the method achieved 28 successful single pass identifications across the VHF, UHF, L-, and S-bands, with the correct satellite ranking first in every case and an RMSE typically several times lower than the nearest competing candidate. The implementation is released as open-source software. These results show that accurate, low-cost passive spacecraft identification is achievable without specialized infrastructure or prior calibration.
+}
+
+\keywords{Passive satellite identification, Doppler frequency shift, single pass identification, Software-defined radio, Space situational awareness, Non-cooperative identification, Two-Line Element set, SGP4, F\&G functions}
+
+\maketitle
+
+
+\bmhead{Declarations}
+
+\bmhead{Availability of data and materials}
+The source code of the Dopplerguesser system developed during this study is publicly available at https://github.com/BUSH222/dopplerguesser \citep{dopplerguesser}. The software is released under the MIT License. The raw IQ recordings, frequency time series, and screen capture files supporting the conclusions of this article are available from the corresponding author on reasonable request.
+
+\bmhead{Competing interests}
+The author declares that he has no competing interests.
+
+\bmhead{Funding}
+Not applicable.
+
+\bmhead{Authors' contributions}
+Fedor Ivanovich Vtorov devised the method, implemented the software, conducted all observations, performed the analysis, and wrote the manuscript.
+
+\bmhead{Acknowledgements}
+Not applicable.
+
+\bibliography{references} % single reference in the declarations section, all other references in the main text
+
+
+\end{document}
